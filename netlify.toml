@@ -1,3 +1,8 @@
 [build]
   command = "node build.mjs"
   publish = "dist"
+
+[build.environment]
+  # Endereço público do site (usado na prévia de links do WhatsApp/Google).
+  # Se ligar um domínio próprio, troque aqui.
+  SITE_URL = "https://aliance-aufaiataria.netlify.app"
