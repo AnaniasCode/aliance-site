@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--META-->
+  <title>ALIANCE® — Camisetas autorais em tiragem limitada</title>
+  <meta name="description" content="Conheça a Aliance: camisetas autorais, tiragens limitadas e acabamento de ateliê." />
+  <!--/META-->
+  <link rel="icon" href="/assets/favicon.ico" type="image/x-icon" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header id="header" class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">ALIANCE<sup>®</sup></a>
+      <nav class="nav-desktop" id="nav-desktop"></nav>
+      <div class="header-icons">
+        <a href="/produtos" aria-label="Buscar peças" data-icon="search"></a>
+        <a href="/contato" aria-label="Atendimento" class="hide-xs" data-icon="user"></a>
+        <a href="/sacola" aria-label="Sacola" class="bag-link"><span data-icon="bag"></span><span class="bag-count" id="bag-count">0</span></a>
+        <button class="menu-btn" id="menu-btn" aria-label="Menu" data-icon="menu"></button>
+      </div>
+    </div>
+    <nav class="nav-mobile" id="nav-mobile" hidden></nav>
+  </header>
+
+  <main id="app"></main>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <p class="logo">ALIANCE®</p>
+        <p class="muted-text">More than clothes · a lifestyle. Camisetas autorais em tiragens limitadas.</p>
+      </div>
+      <div class="footer-col">
+        <p class="eyebrow">Navegue</p>
+        <a href="/colecoes">Coleções</a>
+        <a href="/produtos">Produtos</a>
+        <a href="/sobre">Sobre a Marca</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="footer-col">
+        <p class="eyebrow">Atendimento</p>
+        <a href="mailto:lojaaliancebrl@gmail.com" class="break">lojaaliancebrl@gmail.com</a>
+        <a href="https://www.instagram.com/aliance.brl/" target="_blank" rel="noopener">@aliance.brl</a>
+      </div>
+    </div>
+    <p class="footer-bottom">Est. 2026 · Atendimento em todo o Brasil</p>
+  </footer>
+
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+
+  <script src="/catalog.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
