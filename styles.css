@@ -256,11 +256,12 @@ table.medidas td { padding: .75rem 1rem .75rem 0; color: var(--fg-90); }
 .footer-bottom { border-top: 1px solid var(--border); padding: 1.5rem; text-align: center; font-size: .75rem; color: var(--muted-foreground); }
 
 /* Toast */
-.toast-root { position: fixed; bottom: 1.5rem; right: 1.5rem; left: 1.5rem; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; pointer-events: none; }
-.toast { pointer-events: auto; display: flex; align-items: center; gap: 1rem; background: var(--card); border: 1px solid var(--border); padding: 1rem 1.25rem; font-size: .875rem; max-width: 24rem; width: 100%; box-shadow: 0 10px 30px rgb(0 0 0 / 35%); animation: rise .35s ease both; }
+.toast-root { position: fixed; top: 6rem; right: 1.5rem; left: 1.5rem; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 1rem; background: var(--card); border: 1px solid var(--border); padding: 1rem 1.25rem; font-size: .875rem; max-width: 24rem; width: 100%; box-shadow: 0 10px 30px rgb(0 0 0 / 35%); animation: drop .35s ease both; }
 .toast a { margin-left: auto; flex-shrink: 0; background: var(--primary); color: var(--primary-foreground); padding: .35rem .75rem; font-size: .75rem; }
 
 @keyframes kenburns { from { transform: scale(1.08); } to { transform: scale(1); } }
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes drop { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 @keyframes marquee { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
