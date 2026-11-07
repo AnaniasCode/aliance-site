@@ -264,4 +264,8 @@ table.medidas td { padding: .75rem 1rem .75rem 0; color: var(--fg-90); }
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 @keyframes drop { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 @keyframes marquee { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  /* A faixa de frases gira sempre, mesmo com "reduzir animações" ligado no computador */
+  .marquee-track { animation: marquee 30s linear infinite !important; }
+}
