@@ -10,6 +10,9 @@
     bag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
+    heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+    left: '<path d="m15 18-6-6 6-6"/>',
+    right: '<path d="m9 18 6-6-6-6"/>',
     zoom: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/>',
   };
   const icon = (n) => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -39,6 +42,24 @@
   const updateCount = () => { document.getElementById("bag-count").textContent = bag.reduce((a, i) => a + i.qty, 0); };
   updateCount();
 
+  /* ---------- Favoritos (localStorage) ---------- */
+  const FAV_KEY = "aliance-favoritos";
+  let favs = [];
+  try { favs = JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); } catch { favs = []; }
+  const isFav = (code) => favs.includes(code);
+  const updateFavCount = () => {
+    const el = document.getElementById("fav-count");
+    el.textContent = favs.length;
+    el.hidden = favs.length === 0;
+  };
+  const toggleFav = (code) => {
+    favs = isFav(code) ? favs.filter((c) => c !== code) : [...favs, code];
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch {}
+    updateFavCount();
+    return isFav(code);
+  };
+  updateFavCount();
+
   /* ---------- Toast ---------- */
   function toast(msg, action) {
     const root = document.getElementById("toast-root");
@@ -64,13 +85,96 @@
   window.addEventListener("scroll", updateHeader, { passive: true });
 
   /* ---------- Componentes ---------- */
-  const card = (m) => `
-    <a href="/produtos/${m.slug}" class="card">
-      <div class="card-media">${IMG(m.img, m.name, "", 'loading="lazy"')}<span class="card-code">${m.code}</span></div>
-      <p class="eyebrow">${esc(m.collection)}</p>
-      <p class="card-name">${esc(m.name)}</p>
-      <p class="card-price">${m.preco}</p>
-    </a>`;
+  const card = (m) => {
+    const fav = isFav(m.code);
+    const slides = [[m.fotos.frente, "Frente"], [m.fotos.costas, "Costas"]];
+    return `
+    <article class="card" data-code="${m.code}">
+      <div class="card-media">
+        <a href="/produtos/${m.slug}" class="card-track" tabindex="-1" aria-hidden="true">
+          ${slides.map(([src, label]) => IMG(src, `${m.name} — ${label}`, "", 'loading="lazy" draggable="false"')).join("")}
+        </a>
+        <span class="card-code">${m.code}</span>
+        <button class="card-fav ${fav ? "on" : ""}" aria-pressed="${fav}" aria-label="Favoritar ${esc(m.name)}">${icon("heart")}</button>
+        <button class="card-arrow prev" aria-label="Foto anterior">${icon("left")}</button>
+        <button class="card-arrow next" aria-label="Próxima foto">${icon("right")}</button>
+        <div class="card-dots" aria-hidden="true">${slides.map((_, k) => `<span class="${k ? "" : "on"}"></span>`).join("")}</div>
+        <button class="card-quick" aria-label="Escolher tamanho de ${esc(m.name)}" aria-expanded="false">${icon("bag")}</button>
+        <div class="card-panel">
+          <p class="card-panel-title">Escolha o tamanho</p>
+          <div class="card-sizes">${m.tamanhos.map((t) => `<button class="card-size" data-size="${t}" aria-pressed="false">${t}</button>`).join("")}</div>
+          <button class="card-add">Adicionar à sacola</button>
+        </div>
+      </div>
+      <a href="/produtos/${m.slug}" class="card-info">
+        <p class="eyebrow">${esc(m.collection)}</p>
+        <p class="card-name">${esc(m.name)}</p>
+        <p class="card-price">${m.preco}</p>
+      </a>
+    </article>`;
+  };
+
+  /* ---------- Interações do card (valem para todas as grades) ---------- */
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const goSlide = (cardEl, k) => {
+    const tr = cardEl.querySelector(".card-track");
+    const n = tr.children.length;
+    k = (k + n) % n;
+    tr.scrollTo({ left: k * tr.clientWidth, behavior: "smooth" });
+  };
+  const curSlide = (tr) => Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth));
+  document.addEventListener("scroll", (e) => {
+    const tr = e.target;
+    if (!(tr instanceof Element) || !tr.classList.contains("card-track")) return;
+    const k = curSlide(tr);
+    tr.parentElement.querySelectorAll(".card-dots span").forEach((d, i) => d.classList.toggle("on", i === k));
+  }, true);
+  document.addEventListener("mouseover", (e) => {
+    if (!canHover.matches) return;
+    const c = e.target.closest && e.target.closest(".card");
+    if (c && !c.contains(e.relatedTarget)) goSlide(c, 1);
+  });
+  document.addEventListener("mouseout", (e) => {
+    if (!canHover.matches) return;
+    const c = e.target.closest && e.target.closest(".card");
+    if (c && !c.contains(e.relatedTarget)) {
+      goSlide(c, 0);
+      c.classList.remove("open");
+    }
+  });
+  const setOpen = (c, v) => {
+    c.classList.toggle("open", v);
+    c.querySelector(".card-quick").setAttribute("aria-expanded", String(v));
+  };
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest(".card button");
+    if (!btn) return;
+    e.preventDefault();
+    const c = btn.closest(".card");
+    const m = modelos.find((x) => x.code === c.dataset.code);
+    if (btn.classList.contains("card-fav")) {
+      const on = toggleFav(m.code);
+      document.querySelectorAll(`.card[data-code="${m.code}"] .card-fav`).forEach((b) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+      toast(on ? `${m.name} foi para os favoritos` : `${m.name} saiu dos favoritos`, on ? { label: "Ver favoritos", href: "/favoritos" } : null);
+      if (!on && currentPath === "/favoritos") Favoritos();
+    } else if (btn.classList.contains("card-arrow")) {
+      goSlide(c, curSlide(c.querySelector(".card-track")) + (btn.classList.contains("next") ? 1 : -1));
+    } else if (btn.classList.contains("card-quick")) {
+      setOpen(c, !c.classList.contains("open"));
+    } else if (btn.classList.contains("card-size")) {
+      c.querySelectorAll(".card-size").forEach((b) => { const on = b === btn; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+      c.dataset.size = btn.dataset.size;
+    } else if (btn.classList.contains("card-add")) {
+      const size = c.dataset.size;
+      if (!size) { toast("Escolha um tamanho primeiro"); return; }
+      addBag(m.code, size);
+      toast(`${m.name} · ${size} foi para a sacola`, { label: "Ver sacola", href: "/sacola" });
+      delete c.dataset.size;
+      c.querySelectorAll(".card-size").forEach((b) => { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); });
+      setOpen(c, false);
+    }
+  });
+
   const pageTitle = (eyebrow, title, text) => `
     <div class="page-title"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1>${text ? `<p class="text">${text}</p>` : ""}</div>`;
   const colecaoHref = (c) => `/produtos?colecao=${encodeURIComponent(c)}`;
@@ -330,12 +434,22 @@
     </div>`;
   }
 
+  function Favoritos() {
+    const lista = modelos.filter((m) => isFav(m.code));
+    app.innerHTML = `<div class="container page">
+      ${pageTitle("Favoritos", "Suas favoritas", "As peças que você marcou com o coração ficam guardadas aqui, neste aparelho.")}
+      ${lista.length
+        ? `<div class="grid grid-34" style="row-gap:3rem">${lista.map(card).join("")}</div>`
+        : `<div class="empty"><p>Você ainda não favoritou nenhuma peça.</p><a href="/produtos" class="btn-outline">Ver o acervo</a></div>`}
+    </div>`;
+  }
+
   function NotFound(title = "Página não encontrada", href = "/", label = "Voltar ao início") {
     app.innerHTML = `<div class="notfound"><h1>${title}</h1><a href="${href}">${label}</a></div>`;
   }
 
   /* ---------- Roteador (endereços normais, sem #) ---------- */
-  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
+  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
   function router() {
     clearInterval(heroTimer);
     // Aceita links antigos com # (ex.: /#/produtos/monte-carlo)
@@ -355,6 +469,7 @@
     else if (path === "/produtos") Produtos(query);
     else if (prod) Produto(decodeURIComponent(prod[1]));
     else if (path === "/sacola") Sacola();
+    else if (path === "/favoritos") Favoritos();
     else if (path === "/sobre") Sobre();
     else if (path === "/contato") Contato();
     else NotFound();
