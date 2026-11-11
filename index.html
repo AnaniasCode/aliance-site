@@ -58,6 +58,14 @@
     <p class="footer-bottom">Est. 2026 · Atendimento em todo o Brasil</p>
   </footer>
 
+  <!-- Formulário oculto: só serve para a Netlify reconhecer os pedidos (Forms). -->
+  <form name="pedido" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input name="bot-field" /><input name="pedido" /><input name="nome" /><input name="telefone" />
+    <input name="cep" /><input name="endereco" /><input name="pagamento" /><textarea name="itens"></textarea>
+    <input name="cupom" /><input name="subtotal" /><input name="desconto" /><input name="frete" />
+    <input name="total" /><input name="novidades" />
+  </form>
+
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
 
   <script src="/catalog.js"></script>

@@ -1,5 +1,5 @@
 (function () {
-  const { OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
+  const { WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
   const app = document.getElementById("app");
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -413,30 +413,306 @@
     box.querySelector(".close").focus();
   }
 
+  /* ---------- Pedido: valores, cupom e mensagem ---------- */
+  const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
+  const CUPOM_KEY = "aliance-cupom";
+  const getCupomCode = () => { try { return localStorage.getItem(CUPOM_KEY) || ""; } catch { return ""; } };
+  const setCupomCode = (c) => { try { c ? localStorage.setItem(CUPOM_KEY, c) : localStorage.removeItem(CUPOM_KEY); } catch {} };
+  const hoje = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  // Confere um cupom para um subtotal. Retorna { ok, cupom } ou { ok:false, erro }.
+  function checarCupom(codigo, subtotal) {
+    const c = CUPONS.find((x) => x.codigo.toUpperCase() === String(codigo).trim().toUpperCase());
+    if (!c || c.ativo === false) return { ok: false, erro: "Cupom inválido." };
+    if (c.validoAte && hoje() > c.validoAte) return { ok: false, erro: "Este cupom expirou." };
+    if (c.minimo && subtotal < c.minimo) return { ok: false, erro: `Este cupom vale para compras a partir de ${brl(c.minimo)} em peças.` };
+    return { ok: true, cupom: c };
+  }
+  function linhasSacola() {
+    return bag.map((i) => ({ ...i, m: modelos.find((m) => m.code === i.code) })).filter((l) => l.m);
+  }
+  function resumo() {
+    const linhas = linhasSacola();
+    const subtotal = Math.round(linhas.reduce((a, l) => a + l.m.precoNum * l.qty, 0) * 100) / 100;
+    let desconto = 0, frete = linhas.length ? FRETE : 0, cupom = null, cupomErro = "";
+    const code = getCupomCode();
+    if (code && linhas.length) {
+      const r = checarCupom(code, subtotal);
+      if (r.ok) {
+        cupom = r.cupom;
+        if (cupom.tipo === "percentual") desconto = Math.round(subtotal * cupom.valor) / 100;
+        else if (cupom.tipo === "valor") desconto = Math.min(subtotal, cupom.valor);
+        else if (cupom.tipo === "frete") frete = 0;
+      } else cupomErro = r.erro;
+    }
+    const total = Math.round((subtotal - desconto + frete) * 100) / 100;
+    return { linhas, subtotal, desconto, frete, total, cupom, cupomErro };
+  }
+  const resumoHTML = (r) => `
+    <dl class="totais">
+      <div><dt>Peças</dt><dd>${brl(r.subtotal)}</dd></div>
+      ${r.cupom ? `<div class="desc"><dt>Cupom ${esc(r.cupom.codigo.toUpperCase())}</dt><dd>${r.cupom.tipo === "frete" ? "Frete grátis" : "− " + brl(r.desconto)}</dd></div>` : ""}
+      <div><dt>Frete</dt><dd>${r.frete ? brl(r.frete) : "Grátis"}</dd></div>
+      <div class="total"><dt>Total</dt><dd>${brl(r.total)}</dd></div>
+    </dl>`;
+
   function Sacola() {
-    const linhas = bag.map((i) => ({ ...i, m: modelos.find((m) => m.code === i.code) })).filter((l) => l.m);
+    const r = resumo();
+    if (r.cupomErro) setCupomCode("");
     let body;
-    if (!linhas.length) {
+    if (!r.linhas.length) {
       body = `<div class="empty"><p>Sua sacola está vazia.</p><a href="/produtos" class="btn-outline">Ver o acervo</a></div>`;
     } else {
-      const pedido = `Olá! Quero fazer um pedido pelo site da Aliance:\n${linhas.map((l) => `• ${l.m.name} (${l.code}) — tamanho ${l.size} — ${l.qty}x`).join("\n")}`;
-      body = `<ul class="bag-list">${linhas.map((l) => `
+      body = `<ul class="bag-list">${r.linhas.map((l) => `
           <li>
             ${IMG(l.m.img, l.m.name)}
-            <div style="min-width:0"><a href="/produtos/${l.m.slug}" class="name">${esc(l.m.name)}</a><p class="meta">${l.code} · Tamanho ${l.size} · ${l.qty}x</p></div>
-            <button class="small-btn" data-remove="${l.code}|${l.size}">Remover</button>
+            <div style="min-width:0">
+              <a href="/produtos/${l.m.slug}" class="name">${esc(l.m.name)}</a>
+              <p class="meta">${l.code} · Tamanho ${l.size} · ${l.m.preco}</p>
+              <div class="qty" aria-label="Quantidade">
+                <button data-qty="-1" data-k="${l.code}|${l.size}" aria-label="Diminuir">−</button>
+                <span>${l.qty}</span>
+                <button data-qty="1" data-k="${l.code}|${l.size}" aria-label="Aumentar">+</button>
+              </div>
+            </div>
+            <div class="bag-right">
+              <p class="line-total">${brl(l.m.precoNum * l.qty)}</p>
+              <button class="small-btn" data-remove="${l.code}|${l.size}">Remover</button>
+            </div>
           </li>`).join("")}</ul>
-        <div class="bag-send">
-          <p class="eyebrow mb-4">Enviar pedido para</p>
-          <div class="bag-send-grid">${OWNERS.map((o) => `<a href="${whatsLink(o.phone, pedido)}" target="_blank" rel="noopener">WhatsApp ${o.name}</a>`).join("")}</div>
-          <button class="small-btn" id="clear-bag" style="margin-top:1.5rem">Esvaziar sacola</button>
+        <div class="bag-bottom">
+          <form class="cupom" id="cupom-form" novalidate>
+            <label class="eyebrow" for="cupom-input">Cupom de desconto</label>
+            ${r.cupom
+              ? `<div class="cupom-on"><span>✓ <strong>${esc(r.cupom.codigo.toUpperCase())}</strong> aplicado</span><button type="button" class="small-btn" id="cupom-remove">Remover</button></div>`
+              : `<div class="cupom-row"><input id="cupom-input" name="cupom" autocomplete="off" autocapitalize="characters" placeholder="Digite o código" /><button type="submit">Aplicar</button></div>
+                 <p class="cupom-msg" id="cupom-msg" role="status">${r.cupomErro ? esc(r.cupomErro) : ""}</p>`}
+          </form>
+          <div class="bag-summary">
+            ${resumoHTML(r)}
+            <a href="/finalizar" class="btn-primary block">Continuar para entrega</a>
+            <button class="small-btn" id="clear-bag">Esvaziar sacola</button>
+          </div>
         </div>`;
     }
     app.innerHTML = `<div class="container page" style="max-width:56rem">
-      ${pageTitle("Sacola", "Suas peças", "Monte sua seleção e envie o pedido para um de nós pelo WhatsApp.")}${body}</div>`;
-    app.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", () => { const [c, s] = b.dataset.remove.split("|"); removeBag(c, s); Sacola(); }));
+      ${pageTitle("Sacola", "Suas peças", "Confira suas peças, aplique seu cupom e siga para a entrega.")}${body}</div>`;
+    app.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", () => { const [c, sz] = b.dataset.remove.split("|"); removeBag(c, sz); Sacola(); }));
+    app.querySelectorAll("[data-qty]").forEach((b) => b.addEventListener("click", () => {
+      const [c, sz] = b.dataset.k.split("|");
+      const it = bag.find((i) => i.code === c && i.size === sz);
+      if (!it) return;
+      it.qty += Number(b.dataset.qty);
+      if (it.qty < 1) bag = bag.filter((i) => i !== it);
+      saveBag(); Sacola();
+    }));
     const clr = document.getElementById("clear-bag");
     if (clr) clr.addEventListener("click", () => { bag = []; saveBag(); Sacola(); });
+    const form = document.getElementById("cupom-form");
+    if (form && !r.cupom) form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const code = document.getElementById("cupom-input").value.trim();
+      const msg = document.getElementById("cupom-msg");
+      if (!code) { msg.textContent = "Digite o código do cupom."; return; }
+      const res = checarCupom(code, resumo().subtotal);
+      if (!res.ok) { msg.textContent = res.erro; return; }
+      setCupomCode(res.cupom.codigo);
+      Sacola();
+      toast(`Cupom ${res.cupom.codigo.toUpperCase()} aplicado`);
+    });
+    const rm = document.getElementById("cupom-remove");
+    if (rm) rm.addEventListener("click", () => { setCupomCode(""); Sacola(); });
+  }
+
+  /* ---------- Finalizar pedido: dados, endereço e pagamento ---------- */
+  const CLIENTE_KEY = "aliance-cliente";
+  const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
+  const maskPhone = (v) => {
+    const d = onlyDigits(v).slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : "";
+    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+  const maskCep = (v) => { const d = onlyDigits(v).slice(0, 8); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d; };
+  const UFS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
+  const PAGAMENTOS = ["Pix", "Cartão de débito", "Cartão de crédito"];
+
+  function Finalizar() {
+    const r = resumo();
+    if (!r.linhas.length) {
+      app.innerHTML = `<div class="container page" style="max-width:56rem">${pageTitle("Finalizar pedido", "Sua sacola está vazia")}
+        <div class="empty"><p>Escolha suas peças antes de finalizar.</p><a href="/produtos" class="btn-outline">Ver o acervo</a></div></div>`;
+      return;
+    }
+    let salvo = {};
+    try { salvo = JSON.parse(localStorage.getItem(CLIENTE_KEY) || "{}"); } catch {}
+    const v = (k) => esc(salvo[k] || "");
+    const field = (id, label, attrs = "", wide = "") => `
+      <div class="field ${wide}">
+        <label for="f-${id}">${label}</label>
+        <input id="f-${id}" name="${id}" value="${v(id)}" ${attrs} />
+        <p class="field-err" id="e-${id}"></p>
+      </div>`;
+    app.innerHTML = `<div class="container page">
+      ${pageTitle("Finalizar pedido", "Entrega e pagamento", "Preencha seus dados. No final, o pedido abre pronto no WhatsApp da loja — é só enviar.")}
+      <div class="checkout">
+        <form id="checkout" class="checkout-form" novalidate>
+          <fieldset>
+            <legend class="eyebrow">Seus dados</legend>
+            <div class="fields">
+              ${field("nome", "Nome completo", 'autocomplete="name" required', "wide")}
+              ${field("telefone", "WhatsApp / telefone", 'type="tel" inputmode="tel" autocomplete="tel" placeholder="(17) 99999-9999" required', "wide")}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend class="eyebrow">Endereço de entrega</legend>
+            <div class="fields">
+              ${field("cep", "CEP", 'inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" required')}
+              <p class="cep-msg" id="cep-msg" role="status"></p>
+              ${field("rua", "Rua / avenida", 'autocomplete="address-line1" required', "wide")}
+              ${field("numero", "Número", 'inputmode="numeric" required')}
+              ${field("complemento", "Complemento (opcional)", 'autocomplete="address-line2" placeholder="Apto, bloco, referência"')}
+              ${field("bairro", "Bairro", "required")}
+              ${field("cidade", "Cidade", 'autocomplete="address-level2" required')}
+              <div class="field">
+                <label for="f-uf">Estado</label>
+                <select id="f-uf" name="uf" autocomplete="address-level1" required>
+                  <option value="">UF</option>${UFS.map((u) => `<option ${salvo.uf === u ? "selected" : ""}>${u}</option>`).join("")}
+                </select>
+                <p class="field-err" id="e-uf"></p>
+              </div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend class="eyebrow">Forma de pagamento</legend>
+            <div class="pay">
+              ${PAGAMENTOS.map((pg) => `<label class="pay-opt"><input type="radio" name="pagamento" value="${pg}" ${salvo.pagamento === pg ? "checked" : ""} required><span>${pg}</span></label>`).join("")}
+            </div>
+            <p class="field-err" id="e-pagamento"></p>
+            <p class="hint">O pagamento é combinado com a loja pelo WhatsApp depois do envio do pedido.</p>
+          </fieldset>
+          <label class="optin"><input type="checkbox" name="novidades" ${salvo.novidades ? "checked" : ""}> <span>Quero receber cupons e novidades da Aliance pelo WhatsApp.</span></label>
+          <p class="hint">Seus dados são usados só para entregar o pedido e, se você autorizar acima, para enviar cupons e novidades.</p>
+          <button type="submit" class="btn-primary block" id="finish">Finalizar pedido pelo WhatsApp</button>
+        </form>
+        <aside class="checkout-summary">
+          <p class="eyebrow">Resumo</p>
+          <ul class="mini-list">${r.linhas.map((l) => `<li>${IMG(l.m.img, l.m.name)}<div><p>${esc(l.m.name)}</p><span>Tamanho ${l.size} · ${l.qty}x</span></div><strong>${brl(l.m.precoNum * l.qty)}</strong></li>`).join("")}</ul>
+          ${resumoHTML(r)}
+          <a href="/sacola" class="small-btn">Alterar sacola ou cupom</a>
+        </aside>
+      </div>
+    </div>`;
+
+    const f = document.getElementById("checkout");
+    const tel = f.elements.telefone, cep = f.elements.cep;
+    tel.value = maskPhone(tel.value); cep.value = maskCep(cep.value);
+    tel.addEventListener("input", () => { tel.value = maskPhone(tel.value); });
+    let ultimoCep = onlyDigits(cep.value);
+    cep.addEventListener("input", async () => {
+      cep.value = maskCep(cep.value);
+      const d = onlyDigits(cep.value);
+      if (d.length !== 8 || d === ultimoCep) return;
+      ultimoCep = d;
+      const msg = document.getElementById("cep-msg");
+      msg.textContent = "Buscando endereço…";
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${d}/json/`);
+        const j = await res.json();
+        if (j.erro) { msg.textContent = "CEP não encontrado. Preencha o endereço abaixo."; return; }
+        if (j.logradouro) f.elements.rua.value = j.logradouro;
+        if (j.bairro) f.elements.bairro.value = j.bairro;
+        if (j.localidade) f.elements.cidade.value = j.localidade;
+        if (j.uf) f.elements.uf.value = j.uf;
+        ["rua", "bairro", "cidade", "uf"].forEach((k) => { if (f.elements[k].value) limparErro({ target: f.elements[k] }); });
+        msg.textContent = "";
+        (j.logradouro ? f.elements.numero : f.elements.rua).focus();
+      } catch { msg.textContent = "Não deu para buscar o CEP agora. Preencha o endereço abaixo."; }
+    });
+
+    const limparErro = (e) => {
+      const name = e.target.name; if (!name) return;
+      const err = document.getElementById("e-" + name); if (err) err.textContent = "";
+      f.querySelectorAll(`[name="${name}"]`).forEach((el) => el.removeAttribute("aria-invalid"));
+    };
+    f.addEventListener("input", limparErro);
+    f.addEventListener("change", limparErro);
+    // O CEP preenche rua/bairro/cidade/UF sozinho: limpa os erros desses campos também
+    cep.addEventListener("change", () => ["rua", "bairro", "cidade", "uf"].forEach((k) => { if (f.elements[k].value) limparErro({ target: f.elements[k] }); }));
+
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(f).entries());
+      data.novidades = f.elements.novidades.checked;
+      const erros = {};
+      if ((data.nome || "").trim().split(/\s+/).length < 2) erros.nome = "Digite seu nome e sobrenome.";
+      if (onlyDigits(data.telefone).length < 10) erros.telefone = "Digite um telefone com DDD.";
+      if (onlyDigits(data.cep).length !== 8) erros.cep = "Digite um CEP válido.";
+      for (const k of ["rua", "numero", "bairro", "cidade"]) if (!(data[k] || "").trim()) erros[k] = "Campo obrigatório.";
+      if (!data.uf) erros.uf = "Escolha o estado.";
+      if (!data.pagamento) erros.pagamento = "Escolha a forma de pagamento.";
+      f.querySelectorAll(".field-err").forEach((el) => (el.textContent = ""));
+      f.querySelectorAll("[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+      const keys = Object.keys(erros);
+      if (keys.length) {
+        keys.forEach((k) => { document.getElementById("e-" + k).textContent = erros[k]; const el = f.elements[k]; if (el && el.setAttribute) el.setAttribute("aria-invalid", "true"); });
+        const first = f.elements[keys[0]]; (first instanceof RadioNodeList ? first[0] : first).focus();
+        return;
+      }
+      try { localStorage.setItem(CLIENTE_KEY, JSON.stringify({ ...data })); } catch {}
+      const btn = document.getElementById("finish"); btn.disabled = true; btn.textContent = "Enviando…";
+      const r2 = resumo();
+      const d = new Date();
+      const id = `AL${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const endereco = `${data.rua.trim()}, ${data.numero.trim()}${data.complemento.trim() ? " — " + data.complemento.trim() : ""}\n${data.bairro.trim()} — ${data.cidade.trim()}/${data.uf}\nCEP ${maskCep(data.cep)}`;
+      const itens = r2.linhas.map((l) => `• ${l.qty}x ${l.m.name} (${l.code}) — Tam. ${l.size} — ${brl(l.m.precoNum * l.qty)}`).join("\n");
+      const msg = [
+        `*NOVO PEDIDO — ALIANCE®*`, `Pedido: ${id}`, ``,
+        `*Peças*`, itens, ``,
+        `Subtotal: ${brl(r2.subtotal)}`,
+        r2.cupom ? `Cupom: ${r2.cupom.codigo.toUpperCase()} (${r2.cupom.tipo === "frete" ? "frete grátis" : "− " + brl(r2.desconto)})` : null,
+        `Frete: ${r2.frete ? brl(r2.frete) : "Grátis"}`,
+        `*Total: ${brl(r2.total)}*`,
+        `Pagamento: ${data.pagamento}`, ``,
+        `*Cliente*`, `Nome: ${data.nome.trim()}`, `Telefone: ${maskPhone(data.telefone)}`,
+        `Quer receber cupons e novidades: ${data.novidades ? "Sim" : "Não"}`, ``,
+        `*Endereço de entrega*`, endereco,
+      ].filter((x) => x !== null).join("\n");
+      const pedido = { id, msg, total: brl(r2.total), wa: whatsLink(WHATSAPP_PEDIDOS, msg) };
+      // Guarda uma cópia na Netlify (aviso por e-mail para a loja). Se falhar, segue pelo WhatsApp.
+      const campos = {
+        "form-name": "pedido", pedido: id, nome: data.nome.trim(), telefone: maskPhone(data.telefone),
+        cep: maskCep(data.cep), endereco: endereco.replace(/\n/g, " | "), pagamento: data.pagamento,
+        itens, cupom: r2.cupom ? r2.cupom.codigo.toUpperCase() : "", subtotal: brl(r2.subtotal),
+        desconto: brl(r2.desconto), frete: brl(r2.frete), total: brl(r2.total),
+        novidades: data.novidades ? "Sim" : "Não",
+      };
+      try {
+        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 5000);
+        await fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(campos).toString(), signal: ctrl.signal });
+        clearTimeout(t);
+      } catch {}
+      try { sessionStorage.setItem("aliance-ultimo-pedido", JSON.stringify(pedido)); } catch {}
+      bag = []; saveBag(); setCupomCode("");
+      history.pushState(null, "", "/pedido-enviado");
+      router();
+      window.location.href = pedido.wa;
+    });
+  }
+
+  function PedidoEnviado() {
+    let p = null;
+    try { p = JSON.parse(sessionStorage.getItem("aliance-ultimo-pedido") || "null"); } catch {}
+    if (!p) { app.innerHTML = `<div class="container page" style="max-width:48rem">${pageTitle("Pedido", "Nenhum pedido recente")}<div class="empty"><a href="/produtos" class="btn-outline">Ver o acervo</a></div></div>`; return; }
+    app.innerHTML = `<div class="container page" style="max-width:48rem">
+      ${pageTitle("Pedido " + esc(p.id), "Quase lá!", "Seu pedido abriu no WhatsApp da Aliance. Toque em enviar por lá para confirmar — a loja responde com o pagamento e o prazo de entrega.")}
+      <div class="done">
+        <a href="${p.wa}" class="btn-primary block" target="_blank" rel="noopener">Abrir o WhatsApp de novo</a>
+        <p class="hint">Se o WhatsApp não abriu, toque no botão acima. Total do pedido: <strong>${esc(p.total)}</strong>.</p>
+        <pre class="pedido-txt">${esc(p.msg).replace(/\*/g, "")}</pre>
+        <a href="/produtos" class="small-btn">Continuar comprando</a>
+      </div>
+    </div>`;
   }
 
   function Sobre() {
@@ -499,7 +775,7 @@
   }
 
   /* ---------- Roteador (endereços normais, sem #) ---------- */
-  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
+  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
   function router() {
     clearInterval(heroTimer);
     // Aceita links antigos com # (ex.: /#/produtos/monte-carlo)
@@ -520,6 +796,8 @@
     else if (prod) Produto(decodeURIComponent(prod[1]));
     else if (path === "/sacola") Sacola();
     else if (path === "/favoritos") Favoritos();
+    else if (path === "/finalizar") Finalizar();
+    else if (path === "/pedido-enviado") PedidoEnviado();
     else if (path === "/sobre") Sobre();
     else if (path === "/contato") Contato();
     else NotFound();

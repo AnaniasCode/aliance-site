@@ -4,6 +4,24 @@ window.ALIANCE = (function () {
     { name: "Heitor", phone: "5517988351459", label: "(17) 98835-1459" },
     { name: "Felipe", phone: "5517992498454", label: "(17) 99249-8454" },
   ];
+  // ---------- Pedidos pelo site ----------
+  // WhatsApp que recebe os pedidos (só números, com 55 + DDD).
+  // PROVISÓRIO: número do Heitor até a loja informar o número próprio.
+  const WHATSAPP_PEDIDOS = "5517988351459";
+  const FRETE = 24.90; // valor fixo por pedido
+
+  // Cupons de desconto. Para criar um, copie o modelo abaixo e ajuste.
+  //   codigo:    o que o cliente digita (maiúsculas ou minúsculas tanto faz)
+  //   tipo:      "percentual" (ex.: 10 = 10% nas peças), "valor" (ex.: 20 = R$ 20 de desconto)
+  //              ou "frete" (frete grátis)
+  //   valor:     número do desconto (não usado no tipo "frete")
+  //   minimo:    valor mínimo em peças para o cupom valer (0 = sem mínimo)
+  //   validoAte: último dia de uso, "AAAA-MM-DD" (ou "" para não expirar)
+  //   ativo:     true para valer, false para pausar
+  // Exemplo: { codigo: "BEMVINDO10", tipo: "percentual", valor: 10, minimo: 0, validoAte: "2026-12-31", ativo: true },
+  const CUPONS = [
+  ];
+
   const INSTAGRAM = "https://www.instagram.com/aliance.brl/";
   const SUPPORT_EMAIL = "lojaaliancebrl@gmail.com";
   const TAMANHOS = ["P", "M", "G", "GG"];
@@ -62,7 +80,8 @@ window.ALIANCE = (function () {
 
   const modelos = raw.map(([n, code, slug, name, collection, tagline, descricao, cor, estampa, preco]) => {
     const f = fotos(n);
-    return { code, slug, name, collection, tagline, descricao, cor, estampa, preco,
+    const precoNum = Number(preco.replace(/[^\d,]/g, "").replace(",", "."));
+    return { code, slug, name, collection, tagline, descricao, cor, estampa, preco, precoNum,
       tecido: TECIDO, tamanhos: TAMANHOS, img: f.conjunto, fotos: f };
   });
 
@@ -86,5 +105,5 @@ window.ALIANCE = (function () {
     return `https://api.whatsapp.com/send?phone=${phone}${text ? `&text=${encodeURIComponent(text)}` : ""}`;
   }
 
-  return { OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
+  return { WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
 })();

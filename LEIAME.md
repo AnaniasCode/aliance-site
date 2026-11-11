@@ -9,6 +9,16 @@ Site da Aliance em HTML, CSS e JavaScript puros, sem Lovable e sem dependências
 - `build.mjs`: título, descrição e imagem de prévia (WhatsApp e Google) de cada página.
 - `assets/produtos/`: fotos das peças (3 por peça: costas, frente e conjunto). Para trocar uma foto, substitua o arquivo mantendo o nome.
 
+## Pedidos pelo site
+Sacola → `/finalizar` (nome, telefone, endereço com busca de CEP, forma de pagamento) →
+o pedido abre pronto no WhatsApp da loja e uma cópia é salva na Netlify (Forms, formulário "pedido").
+
+Em `catalog.js`:
+- `WHATSAPP_PEDIDOS`: número que recebe os pedidos (55 + DDD + número).
+- `FRETE`: valor fixo do frete por pedido.
+- `CUPONS`: lista de cupons (modelo explicado no próprio arquivo). Tipos: `percentual`,
+  `valor` ou `frete` (frete grátis), com mínimo, validade e ativo/pausado.
+
 ## Publicar (Netlify ou Vercel)
 Ligue o repositório do GitHub na Netlify ou na Vercel. As configurações já estão em
 `netlify.toml` e `vercel.json`: a cada mudança salva no GitHub, o site é gerado

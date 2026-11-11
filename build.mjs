@@ -34,7 +34,9 @@ const pages = [
   { url: "/contato", title: "Contato — ALIANCE®", desc: "Ajuda e reclamações sobre a Aliance: entre em contato pelo e-mail lojaaliancebrl@gmail.com.",
     ogDesc: "Ajuda e reclamações pelo e-mail de atendimento da Aliance.", img: "/assets/hero_1.jpg" },
   { url: "/favoritos", title: "Favoritos — ALIANCE®", desc: "Suas peças favoritas da Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
-  { url: "/sacola", title: "Sacola — ALIANCE®", desc: "Suas peças escolhidas. Envie o pedido direto pelo WhatsApp.", noindex: true, img: "/assets/hero_1.jpg" },
+  { url: "/finalizar", title: "Finalizar pedido — ALIANCE®", desc: "Entrega e pagamento do seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
+  { url: "/pedido-enviado", title: "Pedido enviado — ALIANCE®", desc: "Seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
+  { url: "/sacola", title: "Sacola — ALIANCE®", desc: "Suas peças escolhidas, cupom de desconto e frete.", noindex: true, img: "/assets/hero_1.jpg" },
   ...modelos.map((m) => ({ url: `/produtos/${m.slug}`, title: `${m.name} — ALIANCE®`, desc: m.descricao, type: "product", img: m.img })),
 ];
 
