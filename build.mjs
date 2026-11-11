@@ -56,7 +56,7 @@ const render = (p) => template.replace(/  <!--META-->[\s\S]*?<!--\/META-->/, met
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-for (const f of ["styles.css", "catalog.js", "app.js", "robots.txt", "favicon.ico", "site.webmanifest"]) {
+for (const f of ["styles.css", "catalog.js", "app.js", "robots.txt", "favicon.ico", "favicon.svg", "site.webmanifest"]) {
   if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 }
 fs.cpSync(path.join(ROOT, "assets"), path.join(OUT, "assets"), { recursive: true });

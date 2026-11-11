@@ -10,3 +10,7 @@ Scripts usados para preparar as fotos das camisas (não vão para o site).
    Deixa o fundo no mesmo cinza neutro das fotos antigas (205), sem mexer na camisa.
 
 Precisa de Python com Pillow, numpy e scipy.
+
+3. `icone_aba.py LOGO.png PASTA_SAIDA`
+   Gera o ícone da aba a partir do desenho das raquetes: `favicon.svg` (muda de cor com o
+   tema claro/escuro do navegador) e `favicon.ico`/PNGs transparentes de reserva.
