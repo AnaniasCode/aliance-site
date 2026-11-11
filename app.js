@@ -91,7 +91,7 @@
     return `
     <article class="card" data-code="${m.code}">
       <div class="card-media">
-        <a href="/produtos/${m.slug}" class="card-track" tabindex="-1" aria-hidden="true">
+        <a href="/produtos/${m.slug}" class="card-track" tabindex="-1" aria-hidden="true" draggable="false">
           ${slides.map(([src, label]) => IMG(src, `${m.name} — ${label}`, "", 'loading="lazy" draggable="false"')).join("")}
         </a>
         <span class="card-code">${m.code}</span>
@@ -142,6 +142,39 @@
       c.classList.remove("open");
     }
   });
+  // Arrastar as fotos com o mouse (no celular o dedo já funciona nativamente)
+  let drag = null;
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    const tr = e.target.closest && e.target.closest(".card-track");
+    if (!tr) return;
+    drag = { tr, x: e.clientX, left: tr.scrollLeft, start: curSlide(tr), moved: false };
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) < 6) return;
+    if (!drag.moved) { drag.moved = true; drag.tr.classList.add("dragging"); }
+    drag.tr.scrollLeft = drag.left - dx;
+  });
+  const endDrag = (e) => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (!d.moved) return;
+    d.tr.classList.remove("dragging");
+    const dx = e.clientX - d.x;
+    const n = d.tr.children.length;
+    const k = Math.abs(dx) > 40 ? Math.min(n - 1, Math.max(0, d.start + (dx < 0 ? 1 : -1))) : d.start;
+    d.tr.scrollTo({ left: k * d.tr.clientWidth, behavior: "smooth" });
+    // não abrir a peça ao soltar depois de arrastar
+    const stop = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    d.tr.addEventListener("click", stop, { capture: true, once: true });
+    setTimeout(() => d.tr.removeEventListener("click", stop, { capture: true }), 50);
+  };
+  document.addEventListener("dragstart", (e) => { if (e.target.closest && e.target.closest(".card-track")) e.preventDefault(); });
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", endDrag);
+
   const setOpen = (c, v) => {
     c.classList.toggle("open", v);
     c.querySelector(".card-quick").setAttribute("aria-expanded", String(v));
@@ -162,8 +195,9 @@
     } else if (btn.classList.contains("card-quick")) {
       setOpen(c, !c.classList.contains("open"));
     } else if (btn.classList.contains("card-size")) {
-      c.querySelectorAll(".card-size").forEach((b) => { const on = b === btn; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
-      c.dataset.size = btn.dataset.size;
+      const unselect = c.dataset.size === btn.dataset.size;
+      c.querySelectorAll(".card-size").forEach((b) => { const on = !unselect && b === btn; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+      if (unselect) delete c.dataset.size; else c.dataset.size = btn.dataset.size;
     } else if (btn.classList.contains("card-add")) {
       const size = c.dataset.size;
       if (!size) { toast("Escolha um tamanho primeiro"); return; }
