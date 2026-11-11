@@ -23,6 +23,8 @@ const { modelos } = ctx.window.ALIANCE;
   const dados = {
     modelos: A.modelos.map((m) => ({ code: m.code, name: m.name, precoNum: m.precoNum, tamanhos: [...m.tamanhos] })),
     FRETE: A.FRETE, CUPONS: A.CUPONS, WHATSAPP_PEDIDOS: A.WHATSAPP_PEDIDOS,
+    // contexto da publicação na Netlify: "production", "branch-deploy", "deploy-preview"…
+    CONTEXTO: process.env.CONTEXT || "local",
   };
   const out = path.join(ROOT, "netlify", "lib", "dados.mjs");
   fs.mkdirSync(path.dirname(out), { recursive: true });

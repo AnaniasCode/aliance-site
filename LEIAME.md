@@ -22,8 +22,9 @@ Em `catalog.js`:
 ## Pagamento online (Mercado Pago — Checkout Pro)
 Liga sozinho quando a variável `MP_ACCESS_TOKEN` existe na Netlify
 (Site configuration → Environment variables). Sem ela, o site continua com o pedido pelo WhatsApp.
-- Chave de teste (`TEST-...`): abre o ambiente de teste do Mercado Pago, sem cobrança real.
-  Se a chave de teste não começar com `TEST-`, crie também `MP_MODO` = `teste`.
+- Cópias de teste (branch / pull request) sempre usam o ambiente de teste do Mercado Pago;
+  só o site oficial (production) cobra de verdade. No site oficial, `MP_MODO` = `teste`
+  força o modo de teste.
 - `netlify/functions/pagamento.mjs`: recalcula preço, cupom e frete no servidor e cria o pagamento.
 - `netlify/functions/mp-webhook.mjs`: recebe o aviso do Mercado Pago, confere o pagamento direto
   com o Mercado Pago e registra os pagos no formulário "pagamento" da Netlify (e-mail para a loja).

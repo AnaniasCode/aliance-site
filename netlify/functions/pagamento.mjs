@@ -2,6 +2,7 @@
 // POST /api/pagamento → cria o pagamento no Mercado Pago (Checkout Pro) e devolve o link
 // A chave fica na variável de ambiente MP_ACCESS_TOKEN da Netlify (nunca no site).
 import { calcularPedido, novoId, brl } from "../lib/pedido.mjs";
+import { CONTEXTO } from "../lib/dados.mjs";
 
 export const config = { path: "/api/pagamento" };
 
@@ -66,7 +67,9 @@ export function montarPreferencia({ id, calc, cli, pagamento, origin }) {
 
 export default async (req, context) => {
   const token = env("MP_ACCESS_TOKEN");
-  const teste = token.startsWith("TEST-") || env("MP_MODO") === "teste";
+  // Trava de segurança: só o site oficial (production) cobra de verdade.
+  // Cópias de teste (branch / pull request) sempre usam o ambiente de teste do Mercado Pago.
+  const teste = CONTEXTO !== "production" || token.startsWith("TEST-") || env("MP_MODO") === "teste";
   // contexto/publicação ajudam a conferir a configuração (não expõem a chave)
   if (req.method === "GET") return json({ ativo: !!token, teste, contexto: context?.deploy?.context || "", publicacao: context?.deploy?.id || "" });
   if (req.method !== "POST") return json({ erro: "Método não permitido." }, 405);
