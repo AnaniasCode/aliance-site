@@ -62,7 +62,12 @@
     <input name="bot-field" /><input name="pedido" /><input name="nome" /><input name="telefone" />
     <input name="cep" /><input name="endereco" /><input name="pagamento" /><textarea name="itens"></textarea>
     <input name="cupom" /><input name="subtotal" /><input name="desconto" /><input name="frete" />
-    <input name="total" /><input name="novidades" />
+    <input name="total" /><input name="novidades" /><input name="status" />
+  </form>
+  <form name="pagamento" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input name="bot-field" /><input name="pedido" /><input name="status" /><input name="valor" /><input name="forma" />
+    <input name="id_pagamento" /><input name="nome" /><input name="telefone" /><input name="endereco" />
+    <textarea name="itens"></textarea><input name="cupom" /><input name="frete" /><input name="total" /><input name="novidades" />
   </form>
 
   <div id="toast-root" class="toast-root" aria-live="polite"></div>

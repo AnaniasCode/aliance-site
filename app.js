@@ -589,10 +589,11 @@
               ${PAGAMENTOS.map((pg) => `<label class="pay-opt"><input type="radio" name="pagamento" value="${pg}" ${salvo.pagamento === pg ? "checked" : ""} required><span>${pg}</span></label>`).join("")}
             </div>
             <p class="field-err" id="e-pagamento"></p>
-            <p class="hint">O pagamento é combinado com a loja pelo WhatsApp depois do envio do pedido.</p>
+            <p class="hint" id="pay-hint">O pagamento é combinado com a loja pelo WhatsApp depois do envio do pedido.</p>
           </fieldset>
           <label class="optin"><input type="checkbox" name="novidades" ${salvo.novidades ? "checked" : ""}> <span>Quero receber cupons e novidades da Aliance pelo WhatsApp.</span></label>
           <p class="hint">Seus dados são usados só para entregar o pedido e, se você autorizar acima, para enviar cupons e novidades.</p>
+          <p class="form-erro" id="form-erro" role="alert"></p>
           <button type="submit" class="btn-primary block" id="finish">Finalizar pedido pelo WhatsApp</button>
         </form>
         <aside class="checkout-summary">
@@ -605,6 +606,13 @@
     </div>`;
 
     const f = document.getElementById("checkout");
+    // Pagamento online (Mercado Pago): só liga se a chave estiver configurada na Netlify
+    pagamentoOnline().then((pg) => {
+      if (!pg.ativo || !document.body.contains(f)) return;
+      document.getElementById("finish").textContent = "Ir para o pagamento";
+      document.getElementById("pay-hint").innerHTML = "Você paga com segurança pelo <strong>Mercado Pago</strong> na próxima tela." +
+        (pg.teste ? ' <span class="badge-teste">Modo de teste — nenhuma cobrança real</span>' : "");
+    });
     const tel = f.elements.telefone, cep = f.elements.cep;
     tel.value = maskPhone(tel.value); cep.value = maskCep(cep.value);
     tel.addEventListener("input", () => { tel.value = maskPhone(tel.value); });
@@ -661,6 +669,39 @@
       }
       try { localStorage.setItem(CLIENTE_KEY, JSON.stringify({ ...data })); } catch {}
       const btn = document.getElementById("finish"); btn.disabled = true; btn.textContent = "Enviando…";
+      const erroEl = document.getElementById("form-erro"); erroEl.textContent = "";
+      const pg = await pagamentoOnline();
+      if (pg.ativo) {
+        try {
+          const res = await fetch("/api/pagamento", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ itens: bag.map(({ code, size, qty }) => ({ code, size, qty })), cupom: getCupomCode(), pagamento: data.pagamento, cliente: data }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.url) throw new Error(j.erro || "Não foi possível iniciar o pagamento. Tente de novo.");
+          const rr = resumo();
+          const endereco = `${data.rua.trim()}, ${data.numero.trim()}${data.complemento.trim() ? " — " + data.complemento.trim() : ""} | ${data.bairro.trim()} — ${data.cidade.trim()}/${data.uf} | CEP ${maskCep(data.cep)}`;
+          const itens = rr.linhas.map((l) => `• ${l.qty}x ${l.m.name} (${l.code}) — Tam. ${l.size} — ${brl(l.m.precoNum * l.qty)}`).join("\n");
+          try { localStorage.setItem("aliance-pedido-pendente", JSON.stringify({ id: j.id, total: brl(j.total), forma: data.pagamento })); } catch {}
+          // cópia do pedido na Netlify, marcado como aguardando pagamento
+          const campos = {
+            "form-name": "pedido", pedido: j.id, status: "Aguardando pagamento (Mercado Pago)", nome: data.nome.trim(),
+            telefone: maskPhone(data.telefone), cep: maskCep(data.cep), endereco, pagamento: data.pagamento, itens,
+            cupom: j.cupom, subtotal: brl(j.subtotal), desconto: brl(j.desconto), frete: brl(j.frete), total: brl(j.total),
+            novidades: data.novidades ? "Sim" : "Não",
+          };
+          try {
+            const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 4000);
+            await fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(campos).toString(), signal: ctrl.signal });
+            clearTimeout(t);
+          } catch {}
+          window.location.href = j.url;
+        } catch (err) {
+          erroEl.textContent = err.message;
+          btn.disabled = false; btn.textContent = "Ir para o pagamento";
+        }
+        return;
+      }
       const r2 = resumo();
       const d = new Date();
       const id = `AL${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -681,7 +722,7 @@
       const pedido = { id, msg, total: brl(r2.total), wa: whatsLink(WHATSAPP_PEDIDOS, msg) };
       // Guarda uma cópia na Netlify (aviso por e-mail para a loja). Se falhar, segue pelo WhatsApp.
       const campos = {
-        "form-name": "pedido", pedido: id, nome: data.nome.trim(), telefone: maskPhone(data.telefone),
+        "form-name": "pedido", pedido: id, status: "Enviado pelo WhatsApp", nome: data.nome.trim(), telefone: maskPhone(data.telefone),
         cep: maskCep(data.cep), endereco: endereco.replace(/\n/g, " | "), pagamento: data.pagamento,
         itens, cupom: r2.cupom ? r2.cupom.codigo.toUpperCase() : "", subtotal: brl(r2.subtotal),
         desconto: brl(r2.desconto), frete: brl(r2.frete), total: brl(r2.total),
@@ -698,6 +739,43 @@
       router();
       window.location.href = pedido.wa;
     });
+  }
+
+  let _pg = null;
+  function pagamentoOnline() {
+    if (!_pg) _pg = fetch("/api/pagamento", { headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : { ativo: false }))
+      .catch(() => ({ ativo: false }));
+    return _pg;
+  }
+
+  function PagamentoRetorno(query) {
+    const st = query.get("collection_status") || query.get("status") || "";
+    const ref = query.get("external_reference") || "";
+    let pend = null;
+    try { pend = JSON.parse(localStorage.getItem("aliance-pedido-pendente") || "null"); } catch {}
+    const id = esc(ref || (pend && pend.id) || "");
+    const total = pend && pend.id === ref ? esc(pend.total) : "";
+    const contato = (txt) => `<a href="${whatsLink(WHATSAPP_PEDIDOS, txt)}" class="btn-outline" target="_blank" rel="noopener">Falar com a loja no WhatsApp</a>`;
+    let html;
+    if (st === "approved") {
+      bag = []; saveBag(); setCupomCode("");
+      try { localStorage.removeItem("aliance-pedido-pendente"); } catch {}
+      html = `${pageTitle("Pedido " + id, "Pagamento aprovado!", "Obrigado pela compra. A loja já recebeu seu pedido e vai preparar o envio.")}
+        <div class="done">${total ? `<p class="hint">Total pago: <strong>${total}</strong></p>` : ""}
+        <p class="hint">Qualquer dúvida sobre a entrega, fale com a gente:</p>
+        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento foi aprovado.`)}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
+    } else if (st === "pending" || st === "in_process") {
+      bag = []; saveBag(); setCupomCode("");
+      html = `${pageTitle("Pedido " + id, "Aguardando pagamento", "Seu pedido foi registrado. Assim que o pagamento for confirmado pelo Mercado Pago, a loja é avisada e prepara o envio.")}
+        <div class="done"><p class="hint">Se escolheu Pix, conclua o pagamento no app do seu banco usando o código do Mercado Pago.</p>
+        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento está em processamento.`)}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
+    } else {
+      html = `${pageTitle(id ? "Pedido " + id : "Pagamento", "Pagamento não concluído", "O pagamento não foi aprovado ou foi cancelado. Suas peças continuam na sacola.")}
+        <div class="done"><a href="/finalizar" class="btn-primary block">Tentar pagar de novo</a>
+        <div class="done-actions"><a href="/sacola" class="small-btn">Voltar para a sacola</a></div></div>`;
+    }
+    app.innerHTML = `<div class="container page" style="max-width:48rem">${html}</div>`;
   }
 
   function PedidoEnviado() {
@@ -775,7 +853,7 @@
   }
 
   /* ---------- Roteador (endereços normais, sem #) ---------- */
-  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
+  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/pagamento-retorno": "Pagamento — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
   function router() {
     clearInterval(heroTimer);
     // Aceita links antigos com # (ex.: /#/produtos/monte-carlo)
@@ -798,6 +876,7 @@
     else if (path === "/favoritos") Favoritos();
     else if (path === "/finalizar") Finalizar();
     else if (path === "/pedido-enviado") PedidoEnviado();
+    else if (path === "/pagamento-retorno") PagamentoRetorno(query);
     else if (path === "/sobre") Sobre();
     else if (path === "/contato") Contato();
     else NotFound();

@@ -376,3 +376,9 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 .checkout-summary .small-btn { display: inline-block; margin-top: 1rem; }
 .done { margin-top: 2rem; }
 .pedido-txt { margin: 1.5rem 0; padding: 1.25rem; white-space: pre-wrap; font-family: var(--font-sans); font-size: .85rem; line-height: 1.6; color: var(--fg-80); background: var(--card); border: 1px solid var(--border); }
+
+/* ---------- Pagamento online ---------- */
+.form-erro { min-height: 1.25rem; margin-top: 1rem; font-size: .85rem; color: oklch(0.72 0.17 25); }
+.badge-teste { display: inline-block; margin-top: .4rem; padding: .2rem .6rem; border: 1px solid var(--accent); color: var(--accent); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+.done-actions { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; }
+.done-actions .btn-outline { padding: 1rem 1.75rem; font-size: .72rem; }

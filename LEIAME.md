@@ -19,6 +19,17 @@ Em `catalog.js`:
 - `CUPONS`: lista de cupons (modelo explicado no próprio arquivo). Tipos: `percentual`,
   `valor` ou `frete` (frete grátis), com mínimo, validade e ativo/pausado.
 
+## Pagamento online (Mercado Pago — Checkout Pro)
+Liga sozinho quando a variável `MP_ACCESS_TOKEN` existe na Netlify
+(Site configuration → Environment variables). Sem ela, o site continua com o pedido pelo WhatsApp.
+- Chave de teste (`TEST-...`): abre o ambiente de teste do Mercado Pago, sem cobrança real.
+  Se a chave de teste não começar com `TEST-`, crie também `MP_MODO` = `teste`.
+- `netlify/functions/pagamento.mjs`: recalcula preço, cupom e frete no servidor e cria o pagamento.
+- `netlify/functions/mp-webhook.mjs`: recebe o aviso do Mercado Pago, confere o pagamento direto
+  com o Mercado Pago e registra os pagos no formulário "pagamento" da Netlify (e-mail para a loja).
+- `netlify/lib/dados.mjs` é gerado pelo `build.mjs` a partir de `catalog.js` (não editar).
+- Retorno do cliente: `/pagamento-retorno` (aprovado, aguardando ou não concluído).
+
 ## Publicar (Netlify ou Vercel)
 Ligue o repositório do GitHub na Netlify ou na Vercel. As configurações já estão em
 `netlify.toml` e `vercel.json`: a cada mudança salva no GitHub, o site é gerado
