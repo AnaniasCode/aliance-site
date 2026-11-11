@@ -64,10 +64,11 @@ export function montarPreferencia({ id, calc, cli, pagamento, origin }) {
   };
 }
 
-export default async (req) => {
+export default async (req, context) => {
   const token = env("MP_ACCESS_TOKEN");
   const teste = token.startsWith("TEST-") || env("MP_MODO") === "teste";
-  if (req.method === "GET") return json({ ativo: !!token, teste });
+  // contexto/publicação ajudam a conferir a configuração (não expõem a chave)
+  if (req.method === "GET") return json({ ativo: !!token, teste, contexto: context?.deploy?.context || "", publicacao: context?.deploy?.id || "" });
   if (req.method !== "POST") return json({ erro: "Método não permitido." }, 405);
   if (!token) return json({ erro: "Pagamento online desligado." }, 503);
 
