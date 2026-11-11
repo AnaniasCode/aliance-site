@@ -65,15 +65,31 @@ export function montarPreferencia({ id, calc, cli, pagamento, origin }) {
   };
 }
 
+// Pergunta ao Mercado Pago se a chave é de uma conta de teste (tag "test_user").
+let _contaTeste = null;
+async function contaDeTeste(token) {
+  if (_contaTeste !== null) return _contaTeste;
+  try {
+    const r = await fetch(`${MP}/users/me`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return null;
+    const u = await r.json();
+    _contaTeste = Array.isArray(u.tags) && u.tags.includes("test_user");
+    return _contaTeste;
+  } catch { return null; }
+}
+
 export default async (req, context) => {
   const token = env("MP_ACCESS_TOKEN");
-  // Trava de segurança: só o site oficial (production) cobra de verdade.
-  // Cópias de teste (branch / pull request) sempre usam o ambiente de teste do Mercado Pago.
-  const teste = CONTEXTO !== "production" || token.startsWith("TEST-") || env("MP_MODO") === "teste";
+  // Trava de segurança: só o site oficial (production) pode usar chave real.
+  // Nas cópias de teste (branch / pull request) a chave TEM que ser de conta de teste.
+  const oficial = CONTEXTO === "production";
+  const contaTeste = token ? await contaDeTeste(token) : null;
+  const teste = contaTeste === true;
   // contexto/publicação ajudam a conferir a configuração (não expõem a chave)
-  if (req.method === "GET") return json({ ativo: !!token, teste, contexto: context?.deploy?.context || "", publicacao: context?.deploy?.id || "" });
+  if (req.method === "GET") return json({ ativo: !!token && (oficial || teste), teste, contexto: context?.deploy?.context || "", publicacao: context?.deploy?.id || "" });
   if (req.method !== "POST") return json({ erro: "Método não permitido." }, 405);
   if (!token) return json({ erro: "Pagamento online desligado." }, 503);
+  if (!oficial && !teste) return json({ erro: "Cópia de teste: a chave do Mercado Pago precisa ser de teste." }, 503);
 
   let body;
   try { body = await req.json(); } catch { return json({ erro: "Pedido inválido." }, 400); }
@@ -102,6 +118,7 @@ export default async (req, context) => {
     console.error("Mercado Pago recusou a preferência:", res.status, JSON.stringify(j));
     return json({ erro: "Não foi possível iniciar o pagamento. Tente de novo." }, 502);
   }
-  const url = (teste && j.sandbox_init_point) || j.init_point;
+  // Com credenciais de teste (conta vendedor de teste), o link normal já é o checkout de teste.
+  const url = j.init_point;
   return json({ id, url, total: calc.total, subtotal: calc.subtotal, desconto: calc.desconto, frete: calc.frete, cupom: calc.cupom });
 };
