@@ -87,7 +87,7 @@
   /* ---------- Componentes ---------- */
   const card = (m) => {
     const fav = isFav(m.code);
-    const slides = [[m.fotos.frente, "Frente"], [m.fotos.costas, "Costas"]];
+    const slides = [[m.fotos.costas, "Costas"], [m.fotos.frente, "Frente"]];
     return `
     <article class="card" data-code="${m.code}">
       <div class="card-media">
