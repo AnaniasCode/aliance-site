@@ -221,7 +221,7 @@ main { min-height: 100vh; }
 .size.on { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
 .btn-block { margin-top: 2rem; width: 100%; background: var(--primary); color: var(--primary-foreground); padding: 1rem 2rem; font-size: .75rem; letter-spacing: .35em; text-transform: uppercase; }
 .btn-block:hover { opacity: .9; }
-.wa-grid { margin-top: .75rem; display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.wa-grid { margin-top: .75rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .75rem; }
 .wa-grid a { border: 1px solid var(--fg-50); padding: .75rem 1rem; text-align: center; font-size: .7rem; letter-spacing: .25em; text-transform: uppercase; }
 .wa-grid a:hover { background: var(--secondary); }
 .specs { margin-top: 2.5rem; border-top: 1px solid var(--border); }

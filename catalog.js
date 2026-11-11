@@ -2,7 +2,7 @@
 window.ALIANCE = (function () {
   const OWNERS = [
     { name: "Heitor", phone: "5517988351459", label: "(17) 98835-1459" },
-    { name: "Felipe", phone: "5517992498454", label: "(17) 99249-8454" },
+    { name: "Felipe" }, // sem WhatsApp no site; o nome aparece em "Sobre a Marca"
   ];
   // ---------- Pedidos pelo site ----------
   // WhatsApp que recebe os pedidos (só números, com 55 + DDD).

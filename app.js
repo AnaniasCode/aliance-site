@@ -379,7 +379,7 @@
 
     const renderWa = () => {
       const msg = `Olá! Tenho interesse na peça ${m.name} (${m.code})${size ? `, tamanho ${size}` : ""}.`;
-      document.getElementById("wa-grid").innerHTML = OWNERS.map((o) => `<a href="${whatsLink(o.phone, msg)}" target="_blank" rel="noopener">WhatsApp ${o.name}</a>`).join("");
+      document.getElementById("wa-grid").innerHTML = OWNERS.filter((o) => o.phone).map((o) => `<a href="${whatsLink(o.phone, msg)}" target="_blank" rel="noopener">WhatsApp ${o.name}</a>`).join("");
     };
     renderWa();
     app.querySelectorAll(".size").forEach((b) => b.addEventListener("click", () => {
