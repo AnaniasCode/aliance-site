@@ -17,6 +17,21 @@ const ctx = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(ROOT, "catalog.js"), "utf8"), ctx);
 const { modelos } = ctx.window.ALIANCE;
 
+// Dados para as funções do servidor (pagamento): preços, frete e cupons do catalog.js
+{
+  const A = ctx.window.ALIANCE;
+  const dados = {
+    modelos: A.modelos.map((m) => ({ code: m.code, name: m.name, precoNum: m.precoNum, tamanhos: [...m.tamanhos] })),
+    FRETE: A.FRETE, CUPONS: A.CUPONS, WHATSAPP_PEDIDOS: A.WHATSAPP_PEDIDOS,
+    // contexto da publicação na Netlify: "production", "branch-deploy", "deploy-preview"…
+    CONTEXTO: process.env.CONTEXT || "local",
+  };
+  const out = path.join(ROOT, "netlify", "lib", "dados.mjs");
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, "// Gerado pelo build.mjs a partir de catalog.js — não edite à mão.\n" +
+    Object.entries(dados).map(([k, v]) => `export const ${k} = ${JSON.stringify(v, null, 2)};`).join("\n") + "\n");
+}
+
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 const abs = (u) => (SITE_URL ? SITE_URL + u : u);
 
@@ -36,6 +51,7 @@ const pages = [
   { url: "/favoritos", title: "Favoritos — ALIANCE®", desc: "Suas peças favoritas da Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/finalizar", title: "Finalizar pedido — ALIANCE®", desc: "Entrega e pagamento do seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/pedido-enviado", title: "Pedido enviado — ALIANCE®", desc: "Seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
+  { url: "/pagamento-retorno", title: "Pagamento — ALIANCE®", desc: "Retorno do pagamento do seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/sacola", title: "Sacola — ALIANCE®", desc: "Suas peças escolhidas, cupom de desconto e frete.", noindex: true, img: "/assets/hero_1.jpg" },
   ...modelos.map((m) => ({ url: `/produtos/${m.slug}`, title: `${m.name} — ALIANCE®`, desc: m.descricao, type: "product", img: m.img })),
 ];
