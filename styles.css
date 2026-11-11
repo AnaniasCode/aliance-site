@@ -137,7 +137,7 @@ main { min-height: 100vh; }
 .card-fav.on { color: var(--accent); }
 .card-fav.on svg { fill: currentColor; }
 .card-fav:active { transform: scale(.88); }
-.card-arrow { top: 50%; margin-top: -1.25rem; opacity: 0; }
+.card-arrow { top: 50%; margin-top: -1.25rem; opacity: 0; pointer-events: none; }
 .card-arrow.prev { left: .6rem; } .card-arrow.next { right: .6rem; }
 .card-arrow:hover { background: var(--primary); color: var(--primary-foreground); }
 .card-dots { position: absolute; left: 50%; bottom: .75rem; transform: translateX(-50%); display: flex; align-items: center; gap: .4rem; padding: .35rem .55rem; border-radius: 999px; background: oklch(0.19 0.018 55 / 60%); pointer-events: none; transition: opacity .3s; }
@@ -154,13 +154,8 @@ main { min-height: 100vh; }
 .card-add:hover { opacity: .9; }
 .card.open .card-panel { transform: none; }
 .card.open .card-dots { opacity: 0; }
-@media (hover: hover) and (pointer: fine) {
-  .card:hover .card-arrow { opacity: 1; }
-  .card:hover .card-panel { transform: none; }
-  .card:hover .card-dots { opacity: 0; }
-}
+.card.hovering .card-arrow { opacity: 1; pointer-events: auto; }
 @media (hover: none), (pointer: coarse) {
-  .card-arrow { display: none; }
   .card-quick { display: grid; }
   .card.open .card-quick { display: none; }
   .card-code { top: .6rem; left: .6rem; padding: .2rem .5rem; font-size: .55rem; letter-spacing: .2em; }

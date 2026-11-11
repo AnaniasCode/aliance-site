@@ -115,7 +115,6 @@
   };
 
   /* ---------- Interações do card (valem para todas as grades) ---------- */
-  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
   const goSlide = (cardEl, k) => {
     const tr = cardEl.querySelector(".card-track");
     const n = tr.children.length;
@@ -129,19 +128,41 @@
     const k = curSlide(tr);
     tr.parentElement.querySelectorAll(".card-dots span").forEach((d, i) => d.classList.toggle("on", i === k));
   }, true);
-  document.addEventListener("mouseover", (e) => {
-    if (!canHover.matches) return;
+
+  // Painel de tamanhos: abre ao passar o mouse ou pelo botão da sacola (toque).
+  // Fecha ao sair com o mouse, ao tocar fora, ao abrir outro card, ou sozinho
+  // depois de 30 segundos sem nenhum tamanho escolhido.
+  const PANEL_TIMEOUT = 30000;
+  const clearSize = (c) => {
+    delete c.dataset.size;
+    c.querySelectorAll(".card-size").forEach((b) => { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); });
+  };
+  const armTimer = (c) => {
+    clearTimeout(c._panelTimer);
+    c._panelTimer = setTimeout(() => { if (!c.dataset.size) setOpen(c, false); }, PANEL_TIMEOUT);
+  };
+  const setOpen = (c, v) => {
+    if (v) document.querySelectorAll(".card.open").forEach((o) => { if (o !== c) setOpen(o, false); });
+    c.classList.toggle("open", v);
+    c.querySelector(".card-quick").setAttribute("aria-expanded", String(v));
+    if (v) armTimer(c);
+    else { clearTimeout(c._panelTimer); clearSize(c); }
+  };
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse") return;
     const c = e.target.closest && e.target.closest(".card");
-    if (c && !c.contains(e.relatedTarget)) goSlide(c, 1);
+    if (c && !c.contains(e.relatedTarget)) { c.classList.add("hovering"); goSlide(c, 1); setOpen(c, true); }
   });
-  document.addEventListener("mouseout", (e) => {
-    if (!canHover.matches) return;
+  document.addEventListener("pointerout", (e) => {
+    if (e.pointerType !== "mouse") return;
     const c = e.target.closest && e.target.closest(".card");
-    if (c && !c.contains(e.relatedTarget)) {
-      goSlide(c, 0);
-      c.classList.remove("open");
-    }
+    if (c && !c.contains(e.relatedTarget)) { c.classList.remove("hovering"); goSlide(c, 0); setOpen(c, false); }
   });
+  document.addEventListener("pointerdown", (e) => {
+    const inside = e.target.closest && e.target.closest(".card.open");
+    document.querySelectorAll(".card.open").forEach((o) => { if (o !== inside) setOpen(o, false); });
+  });
+
   // Arrastar as fotos com o mouse (no celular o dedo já funciona nativamente)
   let drag = null;
   document.addEventListener("pointerdown", (e) => {
@@ -175,10 +196,6 @@
   document.addEventListener("pointerup", endDrag);
   document.addEventListener("pointercancel", endDrag);
 
-  const setOpen = (c, v) => {
-    c.classList.toggle("open", v);
-    c.querySelector(".card-quick").setAttribute("aria-expanded", String(v));
-  };
   document.addEventListener("click", (e) => {
     const btn = e.target.closest && e.target.closest(".card button");
     if (!btn) return;
@@ -198,13 +215,12 @@
       const unselect = c.dataset.size === btn.dataset.size;
       c.querySelectorAll(".card-size").forEach((b) => { const on = !unselect && b === btn; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
       if (unselect) delete c.dataset.size; else c.dataset.size = btn.dataset.size;
+      armTimer(c);
     } else if (btn.classList.contains("card-add")) {
       const size = c.dataset.size;
       if (!size) { toast("Escolha um tamanho primeiro"); return; }
       addBag(m.code, size);
       toast(`${m.name} · ${size} foi para a sacola`, { label: "Ver sacola", href: "/sacola" });
-      delete c.dataset.size;
-      c.querySelectorAll(".card-size").forEach((b) => { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); });
       setOpen(c, false);
     }
   });
