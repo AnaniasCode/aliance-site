@@ -6,3 +6,8 @@
   # Endereço público do site (usado na prévia de links do WhatsApp/Google).
   # Se ligar um domínio próprio, troque aqui.
   SITE_URL = "https://aliance-brl.netlify.app"
+
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
