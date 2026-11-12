@@ -19,6 +19,12 @@ Em `catalog.js`:
 - `CUPONS`: lista de cupons (modelo explicado no próprio arquivo). Tipos: `percentual`,
   `valor` ou `frete` (frete grátis), com mínimo, validade e ativo/pausado.
 
+## Estoque (Google Sheets)
+`ESTOQUE_URL` em `catalog.js` aponta para o script da planilha (`ferramentas/estoque-apps-script.gs`,
+instalação em `ferramentas/ESTOQUE-COMO-INSTALAR.md`). Vazio = estoque desligado.
+Tamanho sem estoque fica desativado, cor zerada mostra "Esgotado", a sacola não passa do estoque
+e cada pedido apaga da planilha as camisas lisas usadas.
+
 ## Pagamento online (Mercado Pago) e página de pedidos
 O servidor fica em `worker/` (Cloudflare Worker, só responde `/api/*`).
 Liga sozinho quando estes **segredos** existem no Cloudflare

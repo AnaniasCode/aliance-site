@@ -394,3 +394,14 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 .sit-approved { border-color: oklch(0.7 0.13 150); color: oklch(0.78 0.13 150); }
 .sit-pending, .sit-in_process { border-color: var(--accent); color: var(--accent); }
 .sit-rejected, .sit-cancelled, .sit-refunded, .sit-charged_back { color: var(--fg-60); }
+
+/* ---------- Estoque ---------- */
+.card-size.off, .card-size.off:hover, .size.off { opacity: .35; text-decoration: line-through; cursor: not-allowed; border-color: var(--border) !important; background: transparent !important; color: inherit !important; }
+.card-esgotado { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: .5rem 1.1rem; background: oklch(0.19 0.018 55 / 85%); font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; pointer-events: none; }
+.card.esgotado .card-esgotado { display: block; }
+.card.esgotado .card-track img { opacity: .55; filter: grayscale(.4); }
+.card.esgotado .card-quick, .card.esgotado .card-panel { display: none; }
+.btn-block:disabled { opacity: .45; cursor: not-allowed; }
+.qty button:disabled { opacity: .3; cursor: not-allowed; }
+.stock-warn { margin-top: .4rem; font-size: .78rem; color: oklch(0.72 0.17 25); }
+.form-erro a { text-decoration: underline; }
