@@ -376,3 +376,15 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 .checkout-summary .small-btn { display: inline-block; margin-top: 1rem; }
 .done { margin-top: 2rem; }
 .pedido-txt { margin: 1.5rem 0; padding: 1.25rem; white-space: pre-wrap; font-family: var(--font-sans); font-size: .85rem; line-height: 1.6; color: var(--fg-80); background: var(--card); border: 1px solid var(--border); }
+
+/* ---------- Estoque ---------- */
+.card-size.off, .size.off { opacity: .35; text-decoration: line-through; cursor: not-allowed; border-color: var(--border) !important; background: transparent !important; color: inherit !important; }
+.card-esgotado { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: .5rem 1.1rem; background: oklch(0.19 0.018 55 / 85%); font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; pointer-events: none; }
+.card.esgotado .card-esgotado { display: block; }
+.card.esgotado .card-track img { opacity: .55; filter: grayscale(.4); }
+.card.esgotado .card-quick, .card.esgotado .card-panel { display: none; }
+.btn-block:disabled { opacity: .45; cursor: not-allowed; }
+.qty button:disabled { opacity: .3; cursor: not-allowed; }
+.stock-warn { margin-top: .4rem; font-size: .78rem; color: oklch(0.72 0.17 25); }
+.form-erro { min-height: 1.25rem; margin-top: 1rem; font-size: .85rem; color: oklch(0.72 0.17 25); }
+.form-erro a { text-decoration: underline; }

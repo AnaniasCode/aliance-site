@@ -10,6 +10,13 @@ window.ALIANCE = (function () {
   const WHATSAPP_PEDIDOS = "5517988351459";
   const FRETE = 24.90; // valor fixo por pedido
 
+  // ---------- Estoque (Google Sheets) ----------
+  // URL do "App da Web" do script em ferramentas/estoque-apps-script.gs.
+  // Vazio = estoque desligado (o site não limita nada).
+  const ESTOQUE_URL = "";
+  // Cor da camisa lisa de cada peça, como está escrita na planilha (coluna COR).
+  const corEstoque = (cor) => (/^pret/i.test(cor) ? "PRETA" : "OFF-WHITE");
+
   // Cupons de desconto. Para criar um, copie o modelo abaixo e ajuste.
   //   codigo:    o que o cliente digita (maiúsculas ou minúsculas tanto faz)
   //   tipo:      "percentual" (ex.: 10 = 10% nas peças), "valor" (ex.: 20 = R$ 20 de desconto)
@@ -81,7 +88,7 @@ window.ALIANCE = (function () {
   const modelos = raw.map(([n, code, slug, name, collection, tagline, descricao, cor, estampa, preco]) => {
     const f = fotos(n);
     const precoNum = Number(preco.replace(/[^\d,]/g, "").replace(",", "."));
-    return { code, slug, name, collection, tagline, descricao, cor, estampa, preco, precoNum,
+    return { code, slug, name, collection, tagline, descricao, cor, corEstoque: corEstoque(cor), estampa, preco, precoNum,
       tecido: TECIDO, tamanhos: TAMANHOS, img: f.conjunto, fotos: f };
   });
 
@@ -105,5 +112,5 @@ window.ALIANCE = (function () {
     return `https://api.whatsapp.com/send?phone=${phone}${text ? `&text=${encodeURIComponent(text)}` : ""}`;
   }
 
-  return { WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
+  return { WHATSAPP_PEDIDOS, FRETE, CUPONS, ESTOQUE_URL, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
 })();

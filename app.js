@@ -1,5 +1,5 @@
 (function () {
-  const { WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
+  const { ESTOQUE_URL, WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
   const app = document.getElementById("app");
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -33,10 +33,59 @@
   let bag = [];
   try { bag = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { bag = []; }
   const saveBag = () => { try { localStorage.setItem(KEY, JSON.stringify(bag)); } catch {} updateCount(); };
+  /* ---------- Estoque (planilha do Google) ---------- */
+  // estoque = { "OFF-WHITE": { P: 1, G: 3 }, "PRETA": {} }  — null enquanto não carregou / desligado
+  let estoque = null;
+  const modeloDe = (code) => modelos.find((x) => x.code === code);
+  const disponivel = (m, size) => (estoque ? (estoque[m.corEstoque] || {})[size] || 0 : Infinity);
+  const naSacola = (cor, size) => bag.reduce((a, i) => { const mm = modeloDe(i.code); return a + (mm && mm.corEstoque === cor && i.size === size ? i.qty : 0); }, 0);
+  const resta = (m, size) => disponivel(m, size) - naSacola(m.corEstoque, size);
+  const esgotado = (m) => !!estoque && m.tamanhos.every((t) => disponivel(m, t) <= 0);
+  const nomeCor = (cor) => (cor === "PRETA" ? "preta" : "off-white");
+  async function carregarEstoque() {
+    if (!ESTOQUE_URL) return;
+    try {
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(ESTOQUE_URL, { cache: "no-store", signal: ctrl.signal });
+      clearTimeout(t);
+      const j = await r.json();
+      if (j && j.ok && j.estoque) { estoque = j.estoque; aplicarEstoque(); if (currentPath === "/sacola") Sacola(); }
+    } catch {}
+  }
+  // Marca tamanhos esgotados e peças esgotadas na página atual
+  function aplicarEstoque() {
+    if (!estoque) return;
+    document.querySelectorAll(".card[data-code]").forEach((c) => {
+      const m = modeloDe(c.dataset.code); if (!m) return;
+      c.classList.toggle("esgotado", esgotado(m));
+      c.querySelectorAll(".card-size").forEach((b) => {
+        const off = disponivel(m, b.dataset.size) <= 0;
+        b.disabled = off; b.classList.toggle("off", off); b.title = off ? "Esgotado" : "";
+        if (off && b.classList.contains("on")) { b.classList.remove("on"); delete c.dataset.size; }
+      });
+    });
+    const pg = document.querySelector("[data-produto]");
+    if (pg) {
+      const m = modeloDe(pg.dataset.produto);
+      pg.querySelectorAll(".size").forEach((b) => {
+        const n = disponivel(m, b.dataset.size), off = n <= 0;
+        b.disabled = off; b.classList.toggle("off", off); b.title = off ? "Esgotado" : (n <= 3 ? `Últimas ${n}` : "");
+      });
+      const add = document.getElementById("add-bag");
+      if (add) { add.disabled = esgotado(m); add.textContent = esgotado(m) ? "Esgotado" : "Adicionar à sacola"; }
+    }
+  }
   const addBag = (code, size) => {
+    const m = modeloDe(code);
+    if (m && resta(m, size) <= 0) {
+      const d = disponivel(m, size);
+      toast(d <= 0 ? `Tamanho ${size} esgotado` : `Só temos ${d} camisa${d > 1 ? "s" : ""} ${nomeCor(m.corEstoque)} ${size} — já estão na sua sacola`);
+      return false;
+    }
     const f = bag.find((i) => i.code === code && i.size === size);
     if (f) f.qty += 1; else bag.push({ code, size, qty: 1 });
     saveBag();
+    return true;
   };
   const removeBag = (code, size) => { bag = bag.filter((i) => !(i.code === code && i.size === size)); saveBag(); };
   const updateCount = () => { document.getElementById("bag-count").textContent = bag.reduce((a, i) => a + i.qty, 0); };
@@ -95,6 +144,7 @@
           ${slides.map(([src, label]) => IMG(src, `${m.name} — ${label}`, "", 'loading="lazy" draggable="false"')).join("")}
         </a>
         <span class="card-code">${m.code}</span>
+        <span class="card-esgotado">Esgotado</span>
         <button class="card-fav ${fav ? "on" : ""}" aria-pressed="${fav}" aria-label="Favoritar ${esc(m.name)}">${icon("heart")}</button>
         <button class="card-arrow prev" aria-label="Foto anterior">${icon("left")}</button>
         <button class="card-arrow next" aria-label="Próxima foto">${icon("right")}</button>
@@ -219,7 +269,7 @@
     } else if (btn.classList.contains("card-add")) {
       const size = c.dataset.size;
       if (!size) { toast("Escolha um tamanho primeiro"); return; }
-      addBag(m.code, size);
+      if (!addBag(m.code, size)) return;
       toast(`${m.name} · ${size} foi para a sacola`, { label: "Ver sacola", href: "/sacola" });
       setOpen(c, false);
     }
@@ -353,7 +403,7 @@
           <p class="p-desc">${esc(m.descricao)}</p>
           <div class="mt-8">
             <p class="eyebrow mb-3">Tamanho <span id="size-label" style="color:var(--foreground)"></span></p>
-            <div class="sizes">${m.tamanhos.map((t) => `<button class="size" data-size="${t}">${t}</button>`).join("")}</div>
+            <div class="sizes" data-produto="${m.code}">${m.tamanhos.map((t) => `<button class="size" data-size="${t}">${t}</button>`).join("")}</div>
           </div>
           <button class="btn-block" id="add-bag">Adicionar à sacola</button>
           <div class="wa-grid" id="wa-grid"></div>
@@ -390,7 +440,7 @@
     }));
     document.getElementById("add-bag").addEventListener("click", () => {
       if (!size) return toast("Escolha um tamanho primeiro");
-      addBag(m.code, size);
+      if (!addBag(m.code, size)) return;
       toast(`${m.name} · ${size} foi para a sacola`, { label: "Ver sacola", href: "/sacola" });
     });
     app.querySelectorAll(".gallery button").forEach((b) => b.addEventListener("click", () => openLightbox(b.dataset.src, `${m.name} — ${b.dataset.label}`)));
@@ -467,11 +517,13 @@
             ${IMG(l.m.img, l.m.name)}
             <div style="min-width:0">
               <a href="/produtos/${l.m.slug}" class="name">${esc(l.m.name)}</a>
-              <p class="meta">${l.code} · Tamanho ${l.size} · ${l.m.preco}</p>
+              <p class="meta">${l.code} · ${l.m.cor.split(" ")[0]} · Tamanho ${l.size} · ${l.m.preco}</p>
+              ${estoque && naSacola(l.m.corEstoque, l.size) > disponivel(l.m, l.size)
+                ? `<p class="stock-warn">${disponivel(l.m, l.size) <= 0 ? "Esgotado" : `Só ${disponivel(l.m, l.size)} disponível(is) em ${nomeCor(l.m.corEstoque)} ${l.size}`} — ajuste a quantidade</p>` : ""}
               <div class="qty" aria-label="Quantidade">
                 <button data-qty="-1" data-k="${l.code}|${l.size}" aria-label="Diminuir">−</button>
                 <span>${l.qty}</span>
-                <button data-qty="1" data-k="${l.code}|${l.size}" aria-label="Aumentar">+</button>
+                <button data-qty="1" data-k="${l.code}|${l.size}" aria-label="Aumentar" ${resta(l.m, l.size) <= 0 ? "disabled" : ""}>+</button>
               </div>
             </div>
             <div class="bag-right">
@@ -489,7 +541,9 @@
           </form>
           <div class="bag-summary">
             ${resumoHTML(r)}
-            <a href="/finalizar" class="btn-primary block">Continuar para entrega</a>
+            ${r.linhas.some((l) => estoque && naSacola(l.m.corEstoque, l.size) > disponivel(l.m, l.size))
+              ? `<p class="stock-warn">Algumas peças passaram do estoque. Ajuste a sacola para continuar.</p><button class="btn-primary block" disabled>Continuar para entrega</button>`
+              : `<a href="/finalizar" class="btn-primary block">Continuar para entrega</a>`}
             <button class="small-btn" id="clear-bag">Esvaziar sacola</button>
           </div>
         </div>`;
@@ -593,6 +647,7 @@
           </fieldset>
           <label class="optin"><input type="checkbox" name="novidades" ${salvo.novidades ? "checked" : ""}> <span>Quero receber cupons e novidades da Aliance pelo WhatsApp.</span></label>
           <p class="hint">Seus dados são usados só para entregar o pedido e, se você autorizar acima, para enviar cupons e novidades.</p>
+          <p class="form-erro" id="form-erro" role="alert"></p>
           <button type="submit" class="btn-primary block" id="finish">Finalizar pedido pelo WhatsApp</button>
         </form>
         <aside class="checkout-summary">
@@ -665,7 +720,29 @@
       const d = new Date();
       const id = `AL${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
       const endereco = `${data.rua.trim()}, ${data.numero.trim()}${data.complemento.trim() ? " — " + data.complemento.trim() : ""}\n${data.bairro.trim()} — ${data.cidade.trim()}/${data.uf}\nCEP ${maskCep(data.cep)}`;
-      const itens = r2.linhas.map((l) => `• ${l.qty}x ${l.m.name} (${l.code}) — Tam. ${l.size} — ${brl(l.m.precoNum * l.qty)}`).join("\n");
+      const itens = r2.linhas.map((l) => `• ${l.qty}x ${l.m.name} (${l.code}) — ${l.m.cor.split(" ")[0]} — Tam. ${l.size} — ${brl(l.m.precoNum * l.qty)}`).join("\n");
+      // Baixa no estoque (apaga as linhas da planilha). Se faltar peça, avisa e para.
+      let avisoEstoque = null;
+      if (ESTOQUE_URL) {
+        const erroEl = document.getElementById("form-erro"); erroEl.textContent = "";
+        try {
+          const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+          const res = await fetch(ESTOQUE_URL, {
+            method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, signal: ctrl.signal,
+            body: JSON.stringify({ pedido: id, total: brl(r2.total), cliente: { nome: data.nome.trim(), telefone: maskPhone(data.telefone) },
+              itens: r2.linhas.map((l) => ({ peca: `${l.m.name} (${l.code})`, cor: l.m.corEstoque, tamanho: l.size, qtd: l.qty })) }),
+          });
+          clearTimeout(t);
+          const j = await res.json();
+          if (j.estoque) estoque = j.estoque;
+          if (!j.ok) {
+            const falta = (j.faltando || []).map((x) => `${nomeCor(x.cor)} ${x.tamanho} (${x.disponivel ? "restam " + x.disponivel : "esgotado"})`).join(", ");
+            erroEl.innerHTML = `Enquanto você escolhia, acabou o estoque de: <strong>${esc(falta || "algumas peças")}</strong>. <a href="/sacola">Ajustar a sacola</a>`;
+            btn.disabled = false; btn.textContent = "Finalizar pedido pelo WhatsApp";
+            return;
+          }
+        } catch { avisoEstoque = "⚠️ Estoque NÃO foi baixado automaticamente — conferir a planilha."; }
+      }
       const msg = [
         `*NOVO PEDIDO — ALIANCE®*`, `Pedido: ${id}`, ``,
         `*Peças*`, itens, ``,
@@ -677,6 +754,7 @@
         `*Cliente*`, `Nome: ${data.nome.trim()}`, `Telefone: ${maskPhone(data.telefone)}`,
         `Quer receber cupons e novidades: ${data.novidades ? "Sim" : "Não"}`, ``,
         `*Endereço de entrega*`, endereco,
+        avisoEstoque ? `\n${avisoEstoque}` : null,
       ].filter((x) => x !== null).join("\n");
       const pedido = { id, msg, total: brl(r2.total), wa: whatsLink(WHATSAPP_PEDIDOS, msg) };
       // Guarda uma cópia na Netlify (aviso por e-mail para a loja). Se falhar, segue pelo WhatsApp.
@@ -803,6 +881,7 @@
     else NotFound();
     window.scrollTo(0, 0);
     updateHeader();
+    aplicarEstoque();
   }
   window.addEventListener("popstate", router);
   document.addEventListener("click", (e) => {
@@ -815,4 +894,5 @@
     router();
   });
   router();
+  carregarEstoque();
 })();
