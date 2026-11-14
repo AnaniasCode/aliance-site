@@ -376,3 +376,7 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 .checkout-summary .small-btn { display: inline-block; margin-top: 1rem; }
 .done { margin-top: 2rem; }
 .pedido-txt { margin: 1.5rem 0; padding: 1.25rem; white-space: pre-wrap; font-family: var(--font-sans); font-size: .85rem; line-height: 1.6; color: var(--fg-80); background: var(--card); border: 1px solid var(--border); }
+
+/* ---------- Foto com modelo ---------- */
+.card-track img.foto-modelo { object-fit: cover; object-position: center 45%; }
+.gallery button.modelo img { aspect-ratio: 3 / 4; object-fit: cover; }

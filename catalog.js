@@ -33,6 +33,7 @@ window.ALIANCE = (function () {
     costas: `/assets/produtos/peca_${n}_costas_cinza.jpg`,
     frente: `/assets/produtos/peca_${n}_frente_cinza.jpg`,
     conjunto: `/assets/produtos/peca_${n}_conjunto_cinza.jpg`,
+    modelo: `/assets/produtos/peca_${n}_modelo.jpg`, // foto com modelo (em pé, 3:4)
   });
 
   const raw = [

@@ -87,12 +87,12 @@
   /* ---------- Componentes ---------- */
   const card = (m) => {
     const fav = isFav(m.code);
-    const slides = [[m.fotos.costas, "Costas"], [m.fotos.frente, "Frente"]];
+    const slides = [[m.fotos.costas, "Costas"], [m.fotos.frente, "Frente"], [m.fotos.modelo, "No corpo"]];
     return `
     <article class="card" data-code="${m.code}">
       <div class="card-media">
         <a href="/produtos/${m.slug}" class="card-track" tabindex="-1" aria-hidden="true" draggable="false">
-          ${slides.map(([src, label]) => IMG(src, `${m.name} — ${label}`, "", 'loading="lazy" draggable="false"')).join("")}
+          ${slides.map(([src, label]) => IMG(src, `${m.name} — ${label}`, src === m.fotos.modelo ? "foto-modelo" : "", 'loading="lazy" draggable="false"')).join("")}
         </a>
         <span class="card-code">${m.code}</span>
         <button class="card-fav ${fav ? "on" : ""}" aria-pressed="${fav}" aria-label="Favoritar ${esc(m.name)}">${icon("heart")}</button>
@@ -335,14 +335,14 @@
     if (!m) return NotFound("Peça não encontrada", "/produtos", "Ver o acervo");
     document.title = `${m.name} — ALIANCE®`;
     const outros = modelos.filter((x) => x.slug !== slug);
-    const views = [[m.fotos.costas, "Costas"], [m.fotos.frente, "Frente"], [m.fotos.conjunto, "Frente e verso"]];
+    const views = [[m.fotos.costas, "Costas"], [m.fotos.frente, "Frente"], [m.fotos.conjunto, "Frente e verso"], [m.fotos.modelo, "No corpo"]];
     let size = null;
 
     app.innerHTML = `<div class="container" style="padding-top:8rem;padding-bottom:6rem">
       <nav class="crumbs"><a href="/produtos">Produtos</a> / <a href="${colecaoHref(m.collection)}">${esc(m.collection)}</a> / <span class="cur">${esc(m.name)}</span></nav>
       <div class="produto">
         <div class="gallery" aria-label="Fotos de ${esc(m.name)}">
-          ${views.map(([src, label], k) => `<button class="${k === 0 ? "wide" : ""}" data-src="${src}" data-label="${label}" aria-label="Ampliar ${esc(m.name)} — ${label}">
+          ${views.map(([src, label], k) => `<button class="${k === 0 ? "wide" : ""}${src === m.fotos.modelo ? " wide modelo" : ""}" data-src="${src}" data-label="${label}" aria-label="Ampliar ${esc(m.name)} — ${label}">
             ${IMG(src, `${m.name} — ${label}`, "", k ? 'loading="lazy"' : "")}<span class="zoom">${icon("zoom")}</span></button>`).join("")}
         </div>
         <div class="produto-info">
