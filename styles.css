@@ -379,4 +379,3 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 
 /* ---------- Foto com modelo ---------- */
 .card-track img.foto-modelo { object-fit: cover; object-position: center 45%; }
-.gallery button.modelo img { aspect-ratio: 3 / 4; object-fit: cover; }
