@@ -144,15 +144,12 @@ main { min-height: 100vh; }
 .card-dots span { width: 6px; height: 6px; border-radius: 999px; background: oklch(0.94 0.02 80 / 45%); transition: all .3s; }
 .card-dots span.on { width: 18px; background: var(--foreground); }
 .card-quick { right: .6rem; bottom: .6rem; display: none; }
-.card-panel { position: absolute; left: 0; right: 0; bottom: 0; padding: .9rem .9rem 1rem; background: oklch(0.19 0.018 55 / 92%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transform: translateY(100%); transition: transform .4s cubic-bezier(.2,.7,.2,1); }
-.card-panel-title { font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted-foreground); }
-.card-sizes { margin-top: .6rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; }
-.card-size { height: 2.25rem; border: 1px solid var(--border); font-size: .8rem; transition: all .2s; }
-.card-size:hover { border-color: var(--foreground); }
-.card-size.on { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
-.card-add { margin-top: .6rem; width: 100%; padding: .7rem .5rem; background: var(--primary); color: var(--primary-foreground); font-size: .65rem; letter-spacing: .25em; text-transform: uppercase; }
-.card-add:hover { opacity: .9; }
-.card.open .card-panel { transform: none; }
+.card-panel { position: absolute; left: .75rem; right: .75rem; bottom: .75rem; display: flex; align-items: center; justify-content: center; gap: .9rem; padding: .55rem 1.1rem; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); box-shadow: 0 6px 20px rgb(0 0 0 / 25%); transform: translateY(calc(100% + 1rem)); opacity: 0; transition: transform .35s cubic-bezier(.2,.7,.2,1), opacity .25s; }
+.card-panel-title { font-size: .66rem; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; }
+.card-sizes { display: flex; gap: .15rem; }
+.card-size { min-width: 2rem; height: 1.9rem; padding: 0 .35rem; border-radius: 999px; font-size: .8rem; color: inherit; transition: background-color .2s, color .2s; }
+.card-size:hover, .card-size:focus-visible { background: var(--primary-foreground); color: var(--primary); }
+.card.open .card-panel { transform: none; opacity: 1; }
 .card.open .card-dots { opacity: 0; }
 .card.hovering .card-arrow { opacity: 1; pointer-events: auto; }
 @media (hover: none), (pointer: coarse) {
@@ -160,11 +157,10 @@ main { min-height: 100vh; }
   .card.open .card-quick { display: none; }
   .card-code { top: .6rem; left: .6rem; padding: .2rem .5rem; font-size: .55rem; letter-spacing: .2em; }
   .card-fav, .card-quick { width: 2.25rem; height: 2.25rem; }
-  .card-panel { padding: .6rem; }
+  .card-panel { left: .4rem; right: .4rem; bottom: .4rem; padding: .3rem .4rem; gap: .3rem; }
   .card-panel-title { display: none; }
-  .card-sizes { margin-top: 0; gap: .3rem; }
-  .card-size { height: 2rem; font-size: .75rem; }
-  .card-add { margin-top: .4rem; padding: .6rem .25rem; font-size: .58rem; letter-spacing: .15em; }
+  .card-sizes { width: 100%; justify-content: space-between; }
+  .card-size { min-width: 0; flex: 1; height: 2.1rem; font-size: .78rem; }
 }
 .card-info { display: block; }
 .card .eyebrow { margin-top: 1rem; }

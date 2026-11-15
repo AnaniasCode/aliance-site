@@ -100,10 +100,9 @@
         <button class="card-arrow next" aria-label="Próxima foto">${icon("right")}</button>
         <div class="card-dots" aria-hidden="true">${slides.map((_, k) => `<span class="${k ? "" : "on"}"></span>`).join("")}</div>
         <button class="card-quick" aria-label="Escolher tamanho de ${esc(m.name)}" aria-expanded="false">${icon("bag")}</button>
-        <div class="card-panel">
-          <p class="card-panel-title">Escolha o tamanho</p>
-          <div class="card-sizes">${m.tamanhos.map((t) => `<button class="card-size" data-size="${t}" aria-pressed="false">${t}</button>`).join("")}</div>
-          <button class="card-add">Adicionar à sacola</button>
+        <div class="card-panel" role="group" aria-label="Adicionar ${esc(m.name)} à sacola">
+          <span class="card-panel-title">Adicionar</span>
+          <div class="card-sizes">${m.tamanhos.map((t) => `<button class="card-size" data-size="${t}" aria-label="Adicionar tamanho ${t} à sacola">${t}</button>`).join("")}</div>
         </div>
       </div>
       <a href="/produtos/${m.slug}" class="card-info">
@@ -141,6 +140,7 @@
     clearTimeout(c._panelTimer);
     c._panelTimer = setTimeout(() => { if (!c.dataset.size) setOpen(c, false); }, PANEL_TIMEOUT);
   };
+  const canHoverNow = (c) => c.classList.contains("hovering");
   const setOpen = (c, v) => {
     if (v) document.querySelectorAll(".card.open").forEach((o) => { if (o !== c) setOpen(o, false); });
     c.classList.toggle("open", v);
@@ -212,16 +212,11 @@
     } else if (btn.classList.contains("card-quick")) {
       setOpen(c, !c.classList.contains("open"));
     } else if (btn.classList.contains("card-size")) {
-      const unselect = c.dataset.size === btn.dataset.size;
-      c.querySelectorAll(".card-size").forEach((b) => { const on = !unselect && b === btn; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
-      if (unselect) delete c.dataset.size; else c.dataset.size = btn.dataset.size;
-      armTimer(c);
-    } else if (btn.classList.contains("card-add")) {
-      const size = c.dataset.size;
-      if (!size) { toast("Escolha um tamanho primeiro"); return; }
+      // clicar no tamanho já adiciona à sacola
+      const size = btn.dataset.size;
       addBag(m.code, size);
       toast(`${m.name} · ${size} foi para a sacola`, { label: "Ver sacola", href: "/sacola" });
-      setOpen(c, false);
+      if (!canHoverNow(c)) setOpen(c, false);
     }
   });
 
