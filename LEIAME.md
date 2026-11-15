@@ -19,6 +19,16 @@ Em `catalog.js`:
 - `CUPONS`: lista de cupons (modelo explicado no próprio arquivo). Tipos: `percentual`,
   `valor` ou `frete` (frete grátis), com mínimo, validade e ativo/pausado.
 
+## Pagamento online (Mercado Pago) e página de pedidos
+O servidor fica em `worker/` (Cloudflare Worker, só responde `/api/*`).
+Liga sozinho quando estes **segredos** existem no Cloudflare
+(Workers & Pages → aliance-site → Settings → Variables and Secrets → tipo *Secret*):
+- `MP_ACCESS_TOKEN`: Access Token **de produção** do Mercado Pago da loja.
+- `PAINEL_SENHA`: senha da página `/pedidos` (lista os pagamentos com dados de entrega).
+Sem `MP_ACCESS_TOKEN`, o site segue com o pedido pelo WhatsApp.
+Preço, frete e cupom são recalculados no servidor; o Mercado Pago só mostra a forma escolhida
+(Pix, débito ou crédito em até 12x). O Mercado Pago avisa os donos por e-mail a cada venda.
+
 ## Publicar no Cloudflare (hospedagem atual)
 `wrangler.jsonc` diz ao Cloudflare para rodar `node build.mjs` e publicar a pasta `dist/`
 (endereço: https://aliance-site.nacional-oficial.workers.dev). Ao ligar um domínio próprio,

@@ -584,10 +584,11 @@
               ${PAGAMENTOS.map((pg) => `<label class="pay-opt"><input type="radio" name="pagamento" value="${pg}" ${salvo.pagamento === pg ? "checked" : ""} required><span>${pg}</span></label>`).join("")}
             </div>
             <p class="field-err" id="e-pagamento"></p>
-            <p class="hint">O pagamento é combinado com a loja pelo WhatsApp depois do envio do pedido.</p>
+            <p class="hint" id="pay-hint">O pagamento é combinado com a loja pelo WhatsApp depois do envio do pedido.</p>
           </fieldset>
           <label class="optin"><input type="checkbox" name="novidades" ${salvo.novidades ? "checked" : ""}> <span>Quero receber cupons e novidades da Aliance pelo WhatsApp.</span></label>
           <p class="hint">Seus dados são usados só para entregar o pedido e, se você autorizar acima, para enviar cupons e novidades.</p>
+          <p class="form-erro" id="form-erro" role="alert"></p>
           <button type="submit" class="btn-primary block" id="finish">Finalizar pedido pelo WhatsApp</button>
         </form>
         <aside class="checkout-summary">
@@ -600,6 +601,13 @@
     </div>`;
 
     const f = document.getElementById("checkout");
+    // Pagamento online (Mercado Pago): só liga se a chave estiver configurada no Cloudflare
+    pagamentoOnline().then((pg) => {
+      if (!pg.ativo || !document.body.contains(f)) return;
+      document.getElementById("finish").textContent = "Ir para o pagamento";
+      document.getElementById("pay-hint").innerHTML = "Você paga com segurança pelo <strong>Mercado Pago</strong> na próxima tela." +
+        (pg.teste ? ' <span class="badge-teste">Modo de teste — nenhuma cobrança real</span>' : "");
+    });
     const tel = f.elements.telefone, cep = f.elements.cep;
     tel.value = maskPhone(tel.value); cep.value = maskCep(cep.value);
     tel.addEventListener("input", () => { tel.value = maskPhone(tel.value); });
@@ -656,6 +664,24 @@
       }
       try { localStorage.setItem(CLIENTE_KEY, JSON.stringify({ ...data })); } catch {}
       const btn = document.getElementById("finish"); btn.disabled = true; btn.textContent = "Enviando…";
+      const erroEl = document.getElementById("form-erro"); erroEl.textContent = "";
+      const pg = await pagamentoOnline();
+      if (pg.ativo) {
+        try {
+          const res = await fetch("/api/pagamento", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ itens: bag.map(({ code, size, qty }) => ({ code, size, qty })), cupom: getCupomCode(), pagamento: data.pagamento, cliente: data }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.url) throw new Error(j.erro || "Não foi possível iniciar o pagamento. Tente de novo.");
+          try { localStorage.setItem("aliance-pedido-pendente", JSON.stringify({ id: j.id, total: brl(j.total), forma: data.pagamento })); } catch {}
+          window.location.href = j.url;
+        } catch (err) {
+          erroEl.textContent = err.message;
+          btn.disabled = false; btn.textContent = "Ir para o pagamento";
+        }
+        return;
+      }
       const r2 = resumo();
       const d = new Date();
       const id = `AL${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -680,6 +706,102 @@
       router();
       window.location.href = pedido.wa;
     });
+  }
+
+  let _pg = null;
+  function pagamentoOnline() {
+    if (!_pg) _pg = fetch("/api/pagamento", { headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : { ativo: false }))
+      .catch(() => ({ ativo: false }));
+    return _pg;
+  }
+
+  function PagamentoRetorno(query) {
+    const st = query.get("collection_status") || query.get("status") || "";
+    const ref = query.get("external_reference") || "";
+    let pend = null;
+    try { pend = JSON.parse(localStorage.getItem("aliance-pedido-pendente") || "null"); } catch {}
+    const id = esc(ref || (pend && pend.id) || "");
+    const total = pend && pend.id === ref ? esc(pend.total) : "";
+    const contato = (t) => `<a href="${whatsLink(WHATSAPP_PEDIDOS, t)}" class="btn-outline" target="_blank" rel="noopener">Falar com a loja no WhatsApp</a>`;
+    let html;
+    if (st === "approved") {
+      bag = []; saveBag(); setCupomCode("");
+      try { localStorage.removeItem("aliance-pedido-pendente"); } catch {}
+      html = `${pageTitle("Pedido " + id, "Pagamento aprovado!", "Obrigado pela compra. A loja já recebeu seu pedido e vai preparar o envio.")}
+        <div class="done">${total ? `<p class="hint">Total pago: <strong>${total}</strong></p>` : ""}
+        <p class="hint">Qualquer dúvida sobre a entrega, fale com a gente:</p>
+        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento foi aprovado.`)}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
+    } else if (st === "pending" || st === "in_process") {
+      bag = []; saveBag(); setCupomCode("");
+      html = `${pageTitle("Pedido " + id, "Aguardando pagamento", "Seu pedido foi registrado. Assim que o pagamento for confirmado pelo Mercado Pago, a loja prepara o envio.")}
+        <div class="done"><p class="hint">Se escolheu Pix, conclua o pagamento no app do seu banco usando o código do Mercado Pago.</p>
+        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento está em processamento.`)}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
+    } else {
+      html = `${pageTitle(id ? "Pedido " + id : "Pagamento", "Pagamento não concluído", "O pagamento não foi aprovado ou foi cancelado. Suas peças continuam na sacola.")}
+        <div class="done"><a href="/finalizar" class="btn-primary block">Tentar pagar de novo</a>
+        <div class="done-actions"><a href="/sacola" class="small-btn">Voltar para a sacola</a></div></div>`;
+    }
+    app.innerHTML = `<div class="container page" style="max-width:48rem">${html}</div>`;
+  }
+
+  /* ---------- Página dos donos: pedidos pagos (lidos do Mercado Pago) ---------- */
+  const SENHA_KEY = "aliance-painel";
+  async function Pedidos() {
+    let senha = "";
+    try { senha = sessionStorage.getItem(SENHA_KEY) || ""; } catch {}
+    const pedirSenha = (msg = "") => {
+      app.innerHTML = `<div class="container page" style="max-width:32rem">
+        ${pageTitle("Área da loja", "Pedidos")}
+        <form id="painel-login" class="painel-login">
+          <label for="painel-senha">Senha</label>
+          <input id="painel-senha" type="password" autocomplete="current-password" required />
+          <p class="form-erro">${esc(msg)}</p>
+          <button class="btn-primary block" type="submit">Entrar</button>
+        </form></div>`;
+      document.getElementById("painel-login").addEventListener("submit", (e) => {
+        e.preventDefault();
+        try { sessionStorage.setItem(SENHA_KEY, document.getElementById("painel-senha").value); } catch {}
+        Pedidos();
+      });
+      document.getElementById("painel-senha").focus();
+    };
+    if (!senha) return pedirSenha();
+    app.innerHTML = `<div class="container page">${pageTitle("Área da loja", "Pedidos")}<p class="hint">Carregando pedidos do Mercado Pago…</p></div>`;
+    let r, j;
+    try { r = await fetch("/api/pedidos", { headers: { "x-senha": senha }, cache: "no-store" }); j = await r.json(); } catch { j = { erro: "Não foi possível carregar agora." }; }
+    if (currentPath !== "/pedidos") return;
+    if (r && r.status === 401) { try { sessionStorage.removeItem(SENHA_KEY); } catch {} return pedirSenha("Senha incorreta."); }
+    if (!r || !r.ok) { app.innerHTML = `<div class="container page">${pageTitle("Área da loja", "Pedidos")}<p class="form-erro">${esc(j.erro || "Erro ao carregar.")}</p></div>`; return; }
+    let filtro = "pagos";
+    const render = () => {
+      const lista = j.pedidos.filter((p) => filtro === "todos" || p.status === "approved");
+      const quando = (d) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const zap = (t) => { const d = String(t).replace(/\D/g, ""); return d.length >= 10 ? `https://api.whatsapp.com/send?phone=55${d}` : ""; };
+      app.innerHTML = `<div class="container page">
+        ${pageTitle("Área da loja", "Pedidos", "Pagamentos feitos pelo site nos últimos 90 dias, lidos direto do Mercado Pago.")}
+        <div class="chips">
+          <button class="chip ${filtro === "pagos" ? "on" : ""}" data-f="pagos">Pagos (${j.pedidos.filter((p) => p.status === "approved").length})</button>
+          <button class="chip ${filtro === "todos" ? "on" : ""}" data-f="todos">Todos (${j.pedidos.length})</button>
+          <button class="chip" id="painel-atualizar">Atualizar</button>
+          <button class="chip" id="painel-sair">Sair</button>
+        </div>
+        ${lista.length ? `<div class="pedidos">${lista.map((p) => `
+          <article class="pedido">
+            <header><strong>${esc(p.pedido || "#" + p.id)}</strong><span class="sit sit-${esc(p.status)}">${esc(p.situacao)}</span></header>
+            <p class="ped-meta">${quando(p.data)} · ${esc(p.valor)} · ${esc(p.forma)}</p>
+            <p><b>${esc(p.nome || "—")}</b>${p.telefone ? ` · ${zap(p.telefone) ? `<a href="${zap(p.telefone)}" target="_blank" rel="noopener">${esc(p.telefone)}</a>` : esc(p.telefone)}` : ""}</p>
+            ${p.itens ? `<p>${esc(p.itens).replace(/; /g, "<br>")}</p>` : ""}
+            ${p.endereco ? `<p class="ped-end">${esc(p.endereco).replace(/ \| /g, "<br>")}</p>` : ""}
+            ${p.cupom ? `<p class="ped-meta">Cupom: ${esc(p.cupom)}</p>` : ""}
+            ${p.novidades ? `<p class="ped-meta">Aceita receber novidades: ${esc(p.novidades)}</p>` : ""}
+          </article>`).join("")}</div>` : `<div class="empty"><p>Nenhum pedido ${filtro === "pagos" ? "pago " : ""}ainda.</p></div>`}
+      </div>`;
+      app.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { filtro = b.dataset.f; render(); }));
+      document.getElementById("painel-atualizar").addEventListener("click", () => Pedidos());
+      document.getElementById("painel-sair").addEventListener("click", () => { try { sessionStorage.removeItem(SENHA_KEY); } catch {} Pedidos(); });
+    };
+    render();
   }
 
   function PedidoEnviado() {
@@ -757,7 +879,7 @@
   }
 
   /* ---------- Roteador (endereços normais, sem #) ---------- */
-  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
+  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/pagamento-retorno": "Pagamento — ALIANCE®", "/pedidos": "Pedidos — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
   function router() {
     clearInterval(heroTimer);
     // Aceita links antigos com # (ex.: /#/produtos/monte-carlo)
@@ -780,6 +902,8 @@
     else if (path === "/favoritos") Favoritos();
     else if (path === "/finalizar") Finalizar();
     else if (path === "/pedido-enviado") PedidoEnviado();
+    else if (path === "/pagamento-retorno") PagamentoRetorno(query);
+    else if (path === "/pedidos") Pedidos();
     else if (path === "/sobre") Sobre();
     else if (path === "/contato") Contato();
     else NotFound();

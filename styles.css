@@ -375,3 +375,22 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 
 /* ---------- Foto com modelo ---------- */
 .card-track img.foto-modelo { object-fit: cover; object-position: center 45%; }
+
+/* ---------- Pagamento online e página de pedidos ---------- */
+.form-erro { min-height: 1.25rem; margin-top: 1rem; font-size: .85rem; color: oklch(0.72 0.17 25); }
+.badge-teste { display: inline-block; margin-top: .4rem; padding: .2rem .6rem; border: 1px solid var(--accent); color: var(--accent); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+.done-actions { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; }
+.done-actions .btn-outline { padding: 1rem 1.75rem; font-size: .72rem; }
+.painel-login { margin-top: 2rem; }
+.painel-login label { display: block; margin-bottom: .4rem; font-size: .8rem; color: var(--fg-80); }
+.pedidos { margin-top: 2rem; display: grid; gap: 1rem; }
+@media (min-width: 900px) { .pedidos { grid-template-columns: 1fr 1fr; } }
+.pedido { border: 1px solid var(--border); background: var(--card); padding: 1.25rem; font-size: .9rem; display: grid; gap: .5rem; }
+.pedido header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-size: 1rem; }
+.pedido a { text-decoration: underline; }
+.ped-meta { color: var(--fg-60); font-size: .8rem; }
+.ped-end { color: var(--fg-80); }
+.sit { padding: .2rem .6rem; border: 1px solid var(--border); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.sit-approved { border-color: oklch(0.7 0.13 150); color: oklch(0.78 0.13 150); }
+.sit-pending, .sit-in_process { border-color: var(--accent); color: var(--accent); }
+.sit-rejected, .sit-cancelled, .sit-refunded, .sit-charged_back { color: var(--fg-60); }
