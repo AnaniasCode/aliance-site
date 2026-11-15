@@ -11,7 +11,7 @@ Site da Aliance em HTML, CSS e JavaScript puros, sem Lovable e sem dependências
 
 ## Pedidos pelo site
 Sacola → `/finalizar` (nome, telefone, endereço com busca de CEP, forma de pagamento) →
-o pedido abre pronto no WhatsApp da loja e uma cópia é salva na Netlify (Forms, formulário "pedido").
+o pedido abre pronto no WhatsApp da loja.
 
 Em `catalog.js`:
 - `WHATSAPP_PEDIDOS`: número que recebe os pedidos (55 + DDD + número).
@@ -23,11 +23,6 @@ Em `catalog.js`:
 `wrangler.jsonc` diz ao Cloudflare para rodar `node build.mjs` e publicar a pasta `dist/`
 (endereço: https://aliance-site.nacional-oficial.workers.dev). Ao ligar um domínio próprio,
 troque o `SITE_URL` dentro de `wrangler.jsonc`.
-
-## Publicar (Netlify ou Vercel)
-Ligue o repositório do GitHub na Netlify ou na Vercel. As configurações já estão em
-`netlify.toml` e `vercel.json`: a cada mudança salva no GitHub, o site é gerado
-(`node build.mjs` cria a pasta `dist/`) e entra no ar sozinho.
 
 ## Ver no próprio computador
 ```bash

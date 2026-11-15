@@ -674,19 +674,6 @@
         `*Endereço de entrega*`, endereco,
       ].filter((x) => x !== null).join("\n");
       const pedido = { id, msg, total: brl(r2.total), wa: whatsLink(WHATSAPP_PEDIDOS, msg) };
-      // Guarda uma cópia na Netlify (aviso por e-mail para a loja). Se falhar, segue pelo WhatsApp.
-      const campos = {
-        "form-name": "pedido", pedido: id, nome: data.nome.trim(), telefone: maskPhone(data.telefone),
-        cep: maskCep(data.cep), endereco: endereco.replace(/\n/g, " | "), pagamento: data.pagamento,
-        itens, cupom: r2.cupom ? r2.cupom.codigo.toUpperCase() : "", subtotal: brl(r2.subtotal),
-        desconto: brl(r2.desconto), frete: brl(r2.frete), total: brl(r2.total),
-        novidades: data.novidades ? "Sim" : "Não",
-      };
-      try {
-        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 5000);
-        await fetch("/", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(campos).toString(), signal: ctrl.signal });
-        clearTimeout(t);
-      } catch {}
       try { sessionStorage.setItem("aliance-ultimo-pedido", JSON.stringify(pedido)); } catch {}
       bag = []; saveBag(); setCupomCode("");
       history.pushState(null, "", "/pedido-enviado");

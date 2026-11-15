@@ -1,6 +1,6 @@
 // Gera a pasta dist/ com uma página HTML por endereço (cada uma com título,
 // descrição e imagem próprias para a prévia de links no WhatsApp/Google).
-// Uso: node build.mjs   (a Netlify/Vercel rodam isso sozinhas a cada mudança)
+// Uso: node build.mjs   (o Cloudflare roda isso sozinho a cada mudança — veja wrangler.jsonc)
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -8,10 +8,8 @@ import vm from "node:vm";
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const OUT = path.join(ROOT, "dist");
 
-// Endereço público do site, para as imagens de prévia. A Netlify e a Vercel
-// informam isso sozinhas; se usar domínio próprio, pode escrever aqui.
-const SITE_URL = (process.env.SITE_URL || process.env.URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? "https://" + process.env.VERCEL_PROJECT_PRODUCTION_URL : "")).replace(/\/$/, "");
+// Endereço público do site, para as imagens de prévia (definido em wrangler.jsonc).
+const SITE_URL = (process.env.SITE_URL || "").replace(/\/$/, "");
 
 const ctx = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(ROOT, "catalog.js"), "utf8"), ctx);
