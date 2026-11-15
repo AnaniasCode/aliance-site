@@ -144,11 +144,11 @@ main { min-height: 100vh; }
 .card-dots span { width: 6px; height: 6px; border-radius: 999px; background: oklch(0.94 0.02 80 / 45%); transition: all .3s; }
 .card-dots span.on { width: 18px; background: var(--foreground); }
 .card-quick { right: .6rem; bottom: .6rem; display: none; }
-.card-panel { position: absolute; left: .75rem; right: .75rem; bottom: .75rem; display: flex; align-items: center; justify-content: center; gap: .9rem; padding: .55rem 1.1rem; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); box-shadow: 0 6px 20px rgb(0 0 0 / 25%); transform: translateY(calc(100% + 1rem)); opacity: 0; transition: transform .35s cubic-bezier(.2,.7,.2,1), opacity .25s; }
-.card-panel-title { font-size: .66rem; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; }
+.card-panel { position: absolute; left: .75rem; right: .75rem; bottom: .75rem; display: flex; align-items: center; justify-content: center; gap: .9rem; padding: .55rem 1.1rem; border-radius: 999px; background: oklch(0.19 0.018 55 / 90%); color: var(--foreground); border: 1px solid oklch(0.94 0.02 80 / 18%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgb(0 0 0 / 35%); transform: translateY(calc(100% + 1rem)); opacity: 0; transition: transform .35s cubic-bezier(.2,.7,.2,1), opacity .25s; }
+.card-panel-title { font-size: .66rem; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
 .card-sizes { display: flex; gap: .15rem; }
 .card-size { min-width: 2rem; height: 1.9rem; padding: 0 .35rem; border-radius: 999px; font-size: .8rem; color: inherit; transition: background-color .2s, color .2s; }
-.card-size:hover, .card-size:focus-visible { background: var(--primary-foreground); color: var(--primary); }
+.card-size:hover, .card-size:focus-visible { background: var(--primary); color: var(--primary-foreground); }
 .card.open .card-panel { transform: none; opacity: 1; }
 .card.open .card-dots { opacity: 0; }
 .card.hovering .card-arrow { opacity: 1; pointer-events: auto; }
