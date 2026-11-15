@@ -1,0 +1,17 @@
+// Configuração do Cloudflare (Workers com arquivos estáticos).
+// A cada envio ao GitHub, o Cloudflare roda "node build.mjs" (gera a pasta dist/ com uma
+// página por endereço) e publica a pasta dist/.
+{
+  "name": "aliance-site",
+  "compatibility_date": "2026-11-01",
+  "build": {
+    // SITE_URL: endereço público do site (usado na prévia de links do WhatsApp/Google).
+    // Ao ligar um domínio próprio, troque aqui.
+    "command": "SITE_URL=https://aliance-site.nacional-oficial.workers.dev node build.mjs"
+  },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}

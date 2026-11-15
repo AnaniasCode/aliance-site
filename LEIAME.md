@@ -19,6 +19,11 @@ Em `catalog.js`:
 - `CUPONS`: lista de cupons (modelo explicado no próprio arquivo). Tipos: `percentual`,
   `valor` ou `frete` (frete grátis), com mínimo, validade e ativo/pausado.
 
+## Publicar no Cloudflare (hospedagem atual)
+`wrangler.jsonc` diz ao Cloudflare para rodar `node build.mjs` e publicar a pasta `dist/`
+(endereço: https://aliance-site.nacional-oficial.workers.dev). Ao ligar um domínio próprio,
+troque o `SITE_URL` dentro de `wrangler.jsonc`.
+
 ## Publicar (Netlify ou Vercel)
 Ligue o repositório do GitHub na Netlify ou na Vercel. As configurações já estão em
 `netlify.toml` e `vercel.json`: a cada mudança salva no GitHub, o site é gerado
