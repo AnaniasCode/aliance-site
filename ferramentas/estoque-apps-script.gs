@@ -36,7 +36,8 @@ function abaEstoque_() {
 function lerLinhas_(aba) {
   const n = aba.getLastRow();
   if (n < 2) return [];
-  return aba.getRange(2, 1, n - 1, 6).getValues().map((r, i) => ({
+  // valores "como aparecem" na planilha (ex.: "R$ 60,90"), para copiar igual em "Pedidos do site"
+  return aba.getRange(2, 1, n - 1, 6).getDisplayValues().map((r, i) => ({
     linha: i + 2, cor: norm_(r[0]), tamanho: norm_(r[1]),
     quant: Math.max(0, parseInt(r[2], 10) || 0), custo: r[3], valor: r[4], status: norm_(r[5]), bruto: r,
   }));
