@@ -8,7 +8,7 @@ que fica dentro da própria planilha. Gratuito, e não gasta créditos da Netlif
 - Conta como estoque só a linha com **DISPONIBILIDADE = DISPONÍVEL** (VENDIDA, PRODUÇÃO e
   EM NEGOCIAÇÃO não contam).
 - Cor da camisa lisa de cada peça: camisas **pretas** usam as linhas **PRETA**; as demais usam
-  **OFF-WHITE** (coluna COR). O estoque de "PRETA M" vale para todas as estampas pretas.
+  **BRANCA** (coluna COR). O estoque de "PRETA M" vale para todas as estampas pretas.
 - Pedido feito no site → as linhas DISPONÍVEIS da cor/tamanho são **apagadas** e copiadas para
   "Pedidos do site" (situação EM NEGOCIAÇÃO). Se a venda não fechar, copie a linha de volta para
   o estoque com DISPONÍVEL.

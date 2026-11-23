@@ -13,9 +13,10 @@ window.ALIANCE = (function () {
   // ---------- Estoque (Google Sheets) ----------
   // URL do "App da Web" do script em ferramentas/estoque-apps-script.gs.
   // Vazio = estoque desligado (o site não limita nada).
-  const ESTOQUE_URL = "https://script.google.com/macros/s/AKfycby4jnvc48W4Pc7ROmtAN7dY0adn-fVWlyAb7GA9K4NlO5RsqNO5YCmoZtVtQJcbkJhQ/exec";
+  const ESTOQUE_URL = "https://script.google.com/macros/s/AKfycbzo3YdYVA47oh7jXdK45N1_jVlfMi6b3cb529EUFOQXipQrkmecOsrA9uo_ts6jbx1pvw/exec";
   // Cor da camisa lisa de cada peça, como está escrita na planilha (coluna COR).
-  const corEstoque = (cor) => (/^pret/i.test(cor) ? "PRETA" : "OFF-WHITE");
+  // Camisas pretas usam PRETA; todas as claras usam BRANCA (OFF-WHITE da planilha não é usado).
+  const corEstoque = (cor) => (/^pret/i.test(cor) ? "PRETA" : "BRANCA");
 
   // Cupons de desconto. Para criar um, copie o modelo abaixo e ajuste.
   //   codigo:    o que o cliente digita (maiúsculas ou minúsculas tanto faz)

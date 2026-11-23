@@ -36,12 +36,20 @@
   /* ---------- Estoque (planilha do Google) ---------- */
   // estoque = { "OFF-WHITE": { P: 1, G: 3 }, "PRETA": {} }  — null enquanto não carregou / desligado
   let estoque = null;
+  // Último estoque visto neste aparelho (até 6 h): limita a sacola na hora, enquanto a planilha responde.
+  const ESTOQUE_CACHE = "aliance-estoque";
+  if (ESTOQUE_URL) {
+    try {
+      const c = JSON.parse(localStorage.getItem(ESTOQUE_CACHE) || "null");
+      if (c && c.url === ESTOQUE_URL && Date.now() - c.t < 6 * 3600e3) estoque = c.estoque;
+    } catch {}
+  }
   const modeloDe = (code) => modelos.find((x) => x.code === code);
   const disponivel = (m, size) => (estoque ? (estoque[m.corEstoque] || {})[size] || 0 : Infinity);
   const naSacola = (cor, size) => bag.reduce((a, i) => { const mm = modeloDe(i.code); return a + (mm && mm.corEstoque === cor && i.size === size ? i.qty : 0); }, 0);
   const resta = (m, size) => disponivel(m, size) - naSacola(m.corEstoque, size);
   const esgotado = (m) => !!estoque && m.tamanhos.every((t) => disponivel(m, t) <= 0);
-  const nomeCor = (cor) => (cor === "PRETA" ? "preta" : "off-white");
+  const nomeCor = (cor) => String(cor).toLowerCase();
   async function carregarEstoque() {
     if (!ESTOQUE_URL) return;
     try {
@@ -49,7 +57,11 @@
       const r = await fetch(ESTOQUE_URL, { cache: "no-store", signal: ctrl.signal });
       clearTimeout(t);
       const j = await r.json();
-      if (j && j.ok && j.estoque) { estoque = j.estoque; aplicarEstoque(); if (currentPath === "/sacola") Sacola(); }
+      if (j && j.ok && j.estoque) {
+        estoque = j.estoque;
+        try { localStorage.setItem(ESTOQUE_CACHE, JSON.stringify({ url: ESTOQUE_URL, t: Date.now(), estoque })); } catch {}
+        aplicarEstoque(); if (currentPath === "/sacola") Sacola();
+      }
     } catch {}
   }
   // Marca tamanhos esgotados e peças esgotadas na página atual
