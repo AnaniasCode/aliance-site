@@ -14,3 +14,7 @@ Precisa de Python com Pillow, numpy e scipy.
 3. `icone_aba.py LOGO.png PASTA_SAIDA`
    Gera o ícone da aba a partir do desenho das raquetes: `favicon.svg` (muda de cor com o
    tema claro/escuro do navegador) e `favicon.ico`/PNGs transparentes de reserva.
+
+4. `planilha-teste/`
+   Cópia arquivada da planilha de teste do estoque (CSV, com custos zerados) e como usá-la
+   para testar o estoque sem mexer na planilha oficial.
