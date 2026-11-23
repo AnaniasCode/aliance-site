@@ -13,7 +13,7 @@ window.ALIANCE = (function () {
   // ---------- Estoque (Google Sheets) ----------
   // URL do "App da Web" do script em ferramentas/estoque-apps-script.gs.
   // Vazio = estoque desligado (o site não limita nada).
-  const ESTOQUE_URL = "";
+  const ESTOQUE_URL = "https://script.google.com/macros/s/AKfycby4jnvc48W4Pc7ROmtAN7dY0adn-fVWlyAb7GA9K4NlO5RsqNO5YCmoZtVtQJcbkJhQ/exec";
   // Cor da camisa lisa de cada peça, como está escrita na planilha (coluna COR).
   const corEstoque = (cor) => (/^pret/i.test(cor) ? "PRETA" : "OFF-WHITE");
 
