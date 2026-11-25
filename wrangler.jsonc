@@ -6,6 +6,9 @@
   // Servidor do pagamento e da página de pedidos (só responde /api/*)
   "main": "worker/index.mjs",
   "compatibility_date": "2026-11-01",
+  // Mantém as variáveis criadas no painel do Cloudflare a cada publicação
+  // (MP_ACCESS_TOKEN e PAINEL_SENHA devem ser do tipo Secret; isto é uma proteção extra).
+  "keep_vars": true,
   "build": {
     // SITE_URL: endereço público do site (usado na prévia de links do WhatsApp/Google).
     // Ao ligar um domínio próprio, troque aqui.
