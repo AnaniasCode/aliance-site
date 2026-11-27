@@ -140,12 +140,21 @@ async function listarPedidos(req, env) {
   if (!env.PAINEL_SENHA) return json({ erro: "Página de pedidos desligada (falta a senha PAINEL_SENHA)." }, 503);
   if (!senhaCerta(req.headers.get("x-senha"), env.PAINEL_SENHA)) return json({ erro: "Senha incorreta." }, 401);
   if (!env.MP_ACCESS_TOKEN) return json({ erro: "Pagamento online desligado." }, 503);
-  const r = await fetch(`${MP}/v1/payments/search?sort=date_created&criteria=desc&limit=100&range=date_created&begin_date=NOW-90DAYS&end_date=NOW`, {
-    headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` },
-  });
-  if (!r.ok) { console.error("Busca de pagamentos falhou:", r.status); return json({ erro: "Não foi possível consultar o Mercado Pago." }, 502); }
-  const j = await r.json();
-  return json({ pedidos: (j.results || []).map(resumoPagamento) });
+  // A busca do Mercado Pago traz TODOS os pagamentos da conta (vendas presenciais, Pix recebidos…).
+  // Ficam só os pedidos criados pelo site: número AL<data>-XXXX ou dados do pedido (metadata).
+  const doSite = (p) => /^AL\d{6}-[A-Z0-9]{4}$/.test(p.external_reference || "") || !!(p.metadata && p.metadata.pedido);
+  const pedidos = [];
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const r = await fetch(`${MP}/v1/payments/search?sort=date_created&criteria=desc&limit=100&offset=${offset}&range=date_created&begin_date=NOW-90DAYS&end_date=NOW`, {
+      headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` },
+    });
+    if (!r.ok) { console.error("Busca de pagamentos falhou:", r.status); return json({ erro: "Não foi possível consultar o Mercado Pago." }, 502); }
+    const j = await r.json();
+    const lote = j.results || [];
+    pedidos.push(...lote.filter(doSite).map(resumoPagamento));
+    if (lote.length < 100) break;
+  }
+  return json({ pedidos });
 }
 
 export default {
