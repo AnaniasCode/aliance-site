@@ -922,39 +922,6 @@
     if (r && r.status === 401) { try { sessionStorage.removeItem(SENHA_KEY); } catch {} return pedirSenha("Senha incorreta."); }
     if (!r || !r.ok) { app.innerHTML = `<div class="container page">${pageTitle("Área da loja", "Pedidos")}<p class="form-erro">${esc(j.erro || "Erro ao carregar.")}</p></div>`; return; }
     let filtro = "pagos";
-    // Resumo das camisas vendidas (só pagamentos aprovados): "2x Par la mer (AL-002) Tam. M; ..."
-    const vendidas = () => {
-      const pagos = j.pedidos.filter((p) => p.status === "approved");
-      const tams = [...new Set(modelos.flatMap((m) => m.tamanhos))];
-      const por = {}; let pecas = 0, fat = 0;
-      pagos.forEach((p) => {
-        fat += Number(String(p.valor).replace(/[^\d,]/g, "").replace(",", ".")) || 0;
-        String(p.itens || "").split(/;\s*/).forEach((it) => {
-          const mm = it.match(/^(\d+)x .*\((AL-\d+)\) Tam\. (\w+)$/);
-          if (!mm) return;
-          const [, q, code, tam] = mm;
-          por[code] = por[code] || {}; por[code][tam] = (por[code][tam] || 0) + Number(q); pecas += Number(q);
-        });
-      });
-      const linhas = modelos.filter((m) => por[m.code]);
-      const cores = {};
-      linhas.forEach((m) => tams.forEach((t) => { cores[m.corEstoque] = cores[m.corEstoque] || {}; cores[m.corEstoque][t] = (cores[m.corEstoque][t] || 0) + (por[m.code][t] || 0); }));
-      const soma = (o) => Object.values(o).reduce((a, b) => a + b, 0);
-      const cel = (n) => `<td class="${n ? "" : "zero"}">${n || "–"}</td>`;
-      if (!linhas.length) return `<div class="empty"><p>Nenhuma camisa vendida pelo site ainda.</p></div>`;
-      return `
-        <div class="vend-resumo">
-          <div><strong>${pagos.length}</strong><span>pedidos pagos</span></div>
-          <div><strong>${pecas}</strong><span>camisas vendidas</span></div>
-          <div><strong>${brl(fat)}</strong><span>faturamento (com frete)</span></div>
-        </div>
-        <div class="vend-tabela-wrap"><table class="vend-tabela">
-          <thead><tr><th>Camisa</th>${tams.map((t) => `<th>${t}</th>`).join("")}<th>Total</th></tr></thead>
-          <tbody>${linhas.map((m) => `<tr><td class="nome">${esc(m.name)} <span>${m.code}</span></td>${tams.map((t) => cel(por[m.code][t] || 0)).join("")}<td class="tot">${soma(por[m.code])}</td></tr>`).join("")}</tbody>
-          <tfoot>${Object.keys(cores).sort().map((c) => `<tr><td class="nome">Camisa ${esc(c.toLowerCase())}</td>${tams.map((t) => cel(cores[c][t] || 0)).join("")}<td class="tot">${soma(cores[c])}</td></tr>`).join("")}</tfoot>
-        </table></div>
-        <p class="hint">Conta só pagamentos aprovados feitos pelo site nos últimos 90 dias. Estornados e recusados não entram.</p>`;
-    };
     const render = () => {
       const lista = j.pedidos.filter((p) => filtro === "todos" || p.status === "approved");
       const quando = (d) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -964,11 +931,10 @@
         <div class="chips">
           <button class="chip ${filtro === "pagos" ? "on" : ""}" data-f="pagos">Pagos (${j.pedidos.filter((p) => p.status === "approved").length})</button>
           <button class="chip ${filtro === "todos" ? "on" : ""}" data-f="todos">Todos (${j.pedidos.length})</button>
-          <button class="chip ${filtro === "vendidas" ? "on" : ""}" data-f="vendidas">Camisas vendidas</button>
           <button class="chip" id="painel-atualizar">Atualizar</button>
           <button class="chip" id="painel-sair">Sair</button>
         </div>
-        ${filtro === "vendidas" ? vendidas() : lista.length ? `<div class="pedidos">${lista.map((p) => `
+        ${lista.length ? `<div class="pedidos">${lista.map((p) => `
           <article class="pedido">
             <header><strong>${esc(p.pedido || "#" + p.id)}</strong><span class="sit sit-${esc(p.status)}">${esc(p.situacao)}</span></header>
             <p class="ped-meta">${quando(p.data)} · ${esc(p.valor)} · ${esc(p.forma)}</p>

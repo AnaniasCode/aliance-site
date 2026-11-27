@@ -458,19 +458,3 @@ body.modo-painel .bf-bar { display: none !important; }
 /* ---------- Frete grátis local ---------- */
 .frete-local { margin-left: .35rem; padding: .05rem .4rem; border: 1px solid oklch(0.7 0.13 150 / 60%); color: oklch(0.78 0.13 150); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle; }
 .frete-aviso { margin: -.2rem 0 .4rem; font-size: .75rem; color: var(--muted-foreground); }
-
-/* ---------- Página de pedidos: camisas vendidas ---------- */
-.vend-resumo { margin-top: 2rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-.vend-resumo div { border: 1px solid var(--border); background: var(--card); padding: 1rem 1.25rem; display: grid; gap: .2rem; }
-.vend-resumo strong { font-family: var(--font-display); font-size: 1.8rem; font-weight: 400; color: var(--accent); }
-.vend-resumo span { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-60); }
-@media (max-width: 640px) { .vend-resumo { grid-template-columns: 1fr; } }
-.vend-tabela-wrap { margin-top: 1.5rem; overflow-x: auto; }
-.vend-tabela { width: 100%; min-width: 30rem; border-collapse: collapse; font-size: .9rem; }
-.vend-tabela th { padding: .6rem .5rem; font-weight: 400; font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted-foreground); border-bottom: 1px solid var(--border); text-align: center; }
-.vend-tabela th:first-child, .vend-tabela td.nome { text-align: left; }
-.vend-tabela td { padding: .65rem .5rem; border-bottom: 1px solid var(--border); text-align: center; }
-.vend-tabela td.nome span { color: var(--fg-50); font-size: .75rem; margin-left: .3rem; }
-.vend-tabela td.zero { color: var(--fg-30); }
-.vend-tabela td.tot { color: var(--accent); font-weight: 500; }
-.vend-tabela tfoot td { background: var(--card); font-weight: 500; }
