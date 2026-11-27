@@ -1057,6 +1057,10 @@
     });
     tickPromo();
     setInterval(tickPromo, 1000);
+    const btnBf = bfBar.querySelector(".bf-btn");
+    const medirBf = () => document.documentElement.style.setProperty("--bf-h", btnBf.offsetHeight + "px");
+    medirBf();
+    if ("ResizeObserver" in window) new ResizeObserver(medirBf).observe(btnBf); else window.addEventListener("resize", medirBf);
   }
 
   function router() {
@@ -1067,6 +1071,7 @@
     const query = new URLSearchParams(location.search);
     currentPath = path;
     document.body.classList.toggle("modo-painel", path === "/pedidos");
+    document.body.classList.toggle("pg-inicio", path === "/");
     document.title = TITLES[path] || "ALIANCE®";
     setMenu(false);
     navD.querySelectorAll("a").forEach((a) => {

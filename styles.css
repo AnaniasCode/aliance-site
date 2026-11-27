@@ -418,10 +418,12 @@ body.modo-painel .painel-titulo { display: block; text-align: center; white-spac
 @media (max-width: 480px) { body.modo-painel .painel-titulo { font-size: 1.35rem; } }
 
 /* ---------- Promoção (Black Friday): faixa do topo, selos e progresso ---------- */
-.bf-bar { display: none; background: #0b0807; border-bottom: 1px solid oklch(0.72 0.09 70 / 35%); color: var(--accent); font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; }
+.bf-bar { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 41; background: oklch(0.12 0.015 55 / 55%); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid oklch(0.72 0.09 70 / 30%); color: var(--accent); font-size: .84rem; letter-spacing: .12em; text-transform: uppercase; }
+body.tem-promo:not(.modo-painel) .header { top: var(--bf-h, 2.9rem); }
+body.tem-promo:not(.modo-painel):not(.pg-inicio) #app { padding-top: var(--bf-h, 2.9rem); }
 body.tem-promo .bf-bar { display: block; }
 body.modo-painel .bf-bar { display: none !important; }
-.bf-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: .9rem; padding: .55rem 1rem; color: inherit; }
+.bf-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: .9rem; padding: .85rem 1rem; color: inherit; }
 .bf-btn strong { color: var(--foreground); font-weight: 500; letter-spacing: .2em; }
 .bf-sep { margin: 0 .55rem; opacity: .6; }
 .bf-tempo { color: var(--foreground); font-variant-numeric: tabular-nums; letter-spacing: .06em; }
@@ -434,8 +436,8 @@ body.modo-painel .bf-bar { display: none !important; }
 .bf-tabela td:last-child { text-align: right; color: var(--accent); font-weight: 500; }
 .bf-obs { margin-top: .6rem; font-size: .75rem; color: var(--muted-foreground); text-align: center; }
 @media (max-width: 640px) {
-  .bf-bar { font-size: .62rem; letter-spacing: .06em; }
-  .bf-btn { gap: .4rem; padding: .5rem .6rem; flex-wrap: wrap; }
+  .bf-bar { font-size: .7rem; letter-spacing: .06em; }
+  .bf-btn { gap: .4rem; padding: .7rem .6rem; flex-wrap: wrap; }
   .bf-esconde-cel { display: none; }
   .bf-sep { margin: 0 .3rem; }
 }
