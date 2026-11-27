@@ -633,6 +633,15 @@
     if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
     return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   };
+  const maskCpf = (v) => { const d = onlyDigits(v).slice(0, 11);
+    return d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2"); };
+  function cpfValido(v) {
+    const d = onlyDigits(v);
+    if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+    const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += Number(d[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+    return dv(9) === Number(d[9]) && dv(10) === Number(d[10]);
+  }
+  const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim());
   const maskCep = (v) => { const d = onlyDigits(v).slice(0, 8); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d; };
   const UFS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
   const PAGAMENTOS = ["Pix", "Cartão de débito", "Cartão de crédito"];
@@ -656,14 +665,17 @@
         <p class="field-err" id="e-${id}"></p>
       </div>`;
     app.innerHTML = `<div class="container page">
-      ${pageTitle("Finalizar pedido", "Entrega e pagamento", "Preencha seus dados. No final, o pedido abre pronto no WhatsApp da loja — é só enviar.")}
-      <div class="checkout">
+      ${pageTitle("Finalizar pedido", "Entrega e pagamento", "Preencha seus dados. Antes de concluir, você revisa tudo e pode mudar o que quiser.")}
+      <div class="checkout" id="checkout-grid">
+        <div class="ck-main">
         <form id="checkout" class="checkout-form" novalidate>
           <fieldset>
             <legend class="eyebrow">Seus dados</legend>
             <div class="fields">
               ${field("nome", "Nome completo", 'autocomplete="name" required', "wide")}
-              ${field("telefone", "WhatsApp / telefone", 'type="tel" inputmode="tel" autocomplete="tel" placeholder="(17) 99999-9999" required', "wide")}
+              ${field("telefone", "WhatsApp / telefone", 'type="tel" inputmode="tel" autocomplete="tel" placeholder="(17) 99999-9999" required')}
+              ${field("cpf", "CPF", 'inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required')}
+              ${field("email", "E-mail", 'type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="voce@email.com" required', "wide")}
             </div>
           </fieldset>
           <fieldset>
@@ -694,10 +706,11 @@
             <p class="hint" id="pay-hint">O pagamento é combinado com a loja pelo WhatsApp depois do envio do pedido.</p>
           </fieldset>
           <label class="optin"><input type="checkbox" name="novidades" ${salvo.novidades ? "checked" : ""}> <span>Quero receber cupons e novidades da Aliance pelo WhatsApp.</span></label>
-          <p class="hint">Seus dados são usados só para entregar o pedido e, se você autorizar acima, para enviar cupons e novidades.</p>
-          <p class="form-erro" id="form-erro" role="alert"></p>
-          <button type="submit" class="btn-primary block" id="finish">Finalizar pedido pelo WhatsApp</button>
+          <p class="hint">Seus dados são usados só para identificar e entregar o pedido e, se você autorizar acima, para enviar cupons e novidades.</p>
+          <button type="submit" class="btn-primary block" id="revisar">Revisar pedido</button>
         </form>
+        <div id="revisao" class="revisao" hidden></div>
+        </div>
         <aside class="checkout-summary">
           <p class="eyebrow">Resumo</p>
           <ul class="mini-list">${r.linhas.map((l) => `<li>${IMG(l.m.img, l.m.name)}<div><p>${esc(l.m.name)}</p><span>Tamanho ${l.size} · ${l.qty}x</span></div><strong>${brl(l.m.precoNum * l.qty)}</strong></li>`).join("")}</ul>
@@ -714,13 +727,13 @@
     // Pagamento online (Mercado Pago): só liga se a chave estiver configurada no Cloudflare
     pagamentoOnline().then((pg) => {
       if (!pg.ativo || !document.body.contains(f)) return;
-      document.getElementById("finish").textContent = "Ir para o pagamento";
       document.getElementById("pay-hint").innerHTML = "Você paga com segurança pelo <strong>Mercado Pago</strong> na próxima tela." +
         (pg.teste ? ' <span class="badge-teste">Modo de teste — nenhuma cobrança real</span>' : "");
     });
-    const tel = f.elements.telefone, cep = f.elements.cep;
-    tel.value = maskPhone(tel.value); cep.value = maskCep(cep.value);
+    const tel = f.elements.telefone, cep = f.elements.cep, cpf = f.elements.cpf;
+    tel.value = maskPhone(tel.value); cep.value = maskCep(cep.value); cpf.value = maskCpf(cpf.value);
     tel.addEventListener("input", () => { tel.value = maskPhone(tel.value); });
+    cpf.addEventListener("input", () => { cpf.value = maskCpf(cpf.value); });
     let ultimoCep = onlyDigits(cep.value);
     cep.addEventListener("input", async () => {
       cep.value = maskCep(cep.value);
@@ -761,6 +774,8 @@
       const erros = {};
       if ((data.nome || "").trim().split(/\s+/).length < 2) erros.nome = "Digite seu nome e sobrenome.";
       if (onlyDigits(data.telefone).length < 10) erros.telefone = "Digite um telefone com DDD.";
+      if (!cpfValido(data.cpf)) erros.cpf = onlyDigits(data.cpf).length === 11 ? "CPF inválido. Confira os números." : "Digite os 11 números do CPF.";
+      if (!emailValido(data.email)) erros.email = "Digite um e-mail válido.";
       if (onlyDigits(data.cep).length !== 8) erros.cep = "Digite um CEP válido.";
       for (const k of ["rua", "numero", "bairro", "cidade"]) if (!(data[k] || "").trim()) erros[k] = "Campo obrigatório.";
       if (!data.uf) erros.uf = "Escolha o estado.";
@@ -773,7 +788,79 @@
         const first = f.elements[keys[0]]; (first instanceof RadioNodeList ? first[0] : first).focus();
         return;
       }
+      data.email = data.email.trim().toLowerCase();
       try { localStorage.setItem(CLIENTE_KEY, JSON.stringify({ ...data })); } catch {}
+      mostrarRevisao(data);
+    });
+
+    /* ---------- Passo 2: revisar (e editar) antes de concluir ---------- */
+    const revisao = document.getElementById("revisao");
+    const grid = document.getElementById("checkout-grid");
+    let dados = null;
+    const editar = (campo) => {
+      revisao.hidden = true; f.hidden = false; grid.classList.remove("revisando");
+      const el = f.elements[campo]; const alvo = el instanceof RadioNodeList ? el[0] : el;
+      if (alvo) { alvo.scrollIntoView({ block: "center" }); alvo.focus({ preventScroll: true }); }
+    };
+    async function mostrarRevisao(data) {
+      dados = data;
+      const r = resumo({ cep: data.cep, cidade: data.cidade, uf: data.uf });
+      if (!r.linhas.length) { Finalizar(); return; }
+      const online = (await pagamentoOnline()).ativo;
+      const k = (l) => `${l.code}|${l.size}`;
+      f.hidden = true; revisao.hidden = false; grid.classList.add("revisando");
+      revisao.innerHTML = `
+        <p class="eyebrow">Revise seu pedido</p>
+        <p class="hint">Confira tudo antes de ${online ? "pagar" : "enviar"}. Se precisar, mude aqui mesmo.</p>
+        <section class="rev-bloco">
+          <header><h3>Peças</h3><a href="/sacola" class="rev-editar">Trocar peças ou cupom</a></header>
+          <ul class="bag-list rev-itens">${r.linhas.map((l) => `<li>
+            ${IMG(l.m.img, l.m.name)}
+            <div style="min-width:0"><a href="/produtos/${l.m.slug}" class="name">${esc(l.m.name)}</a>
+              <p class="meta">${l.code} · ${l.m.cor.split(" ")[0]} · Tamanho ${l.size} · ${l.m.preco}</p>
+              <div class="qty" aria-label="Quantidade"><button type="button" data-rq="-1" data-k="${k(l)}" aria-label="Diminuir">−</button><span>${l.qty}</span><button type="button" data-rq="1" data-k="${k(l)}" aria-label="Aumentar" ${resta(l.m, l.size) <= 0 ? "disabled" : ""}>+</button></div>
+            </div>
+            <div class="bag-right"><p class="line-total">${brl(l.m.precoNum * l.qty)}</p><button type="button" class="small-btn" data-rrm="${k(l)}">Remover</button></div>
+          </li>`).join("")}</ul>
+        </section>
+        <section class="rev-bloco">
+          <header><h3>Seus dados</h3><button type="button" class="rev-editar" data-editar="nome">Editar</button></header>
+          <p>${esc(data.nome.trim())}<br>CPF ${maskCpf(data.cpf)}<br>${maskPhone(data.telefone)}<br>${esc(data.email)}</p>
+        </section>
+        <section class="rev-bloco">
+          <header><h3>Entrega</h3><button type="button" class="rev-editar" data-editar="cep">Editar</button></header>
+          <p>${esc(data.rua.trim())}, ${esc(data.numero.trim())}${data.complemento.trim() ? " — " + esc(data.complemento.trim()) : ""}<br>${esc(data.bairro.trim())} — ${esc(data.cidade.trim())}/${esc(data.uf)}<br>CEP ${maskCep(data.cep)}</p>
+        </section>
+        <section class="rev-bloco">
+          <header><h3>Pagamento</h3><button type="button" class="rev-editar" data-editar="pagamento">Editar</button></header>
+          <p>${esc(data.pagamento)}${online ? " · pelo Mercado Pago, na próxima tela" : " · combinado com a loja pelo WhatsApp"}</p>
+        </section>
+        <div class="rev-totais">${resumoHTML(r)}</div>
+        <p class="form-erro" id="form-erro" role="alert"></p>
+        <button type="button" class="btn-primary block" id="finish">${online ? "Ir para o pagamento" : "Finalizar pedido pelo WhatsApp"}</button>
+        <p class="center"><button type="button" class="small-btn" data-editar="nome">Voltar e editar</button></p>`;
+      revisao.querySelectorAll("[data-editar]").forEach((b) => b.addEventListener("click", () => editar(b.dataset.editar)));
+      const mudar = (key, delta) => {
+        const [c, sz] = key.split("|");
+        const it = bag.find((i) => i.code === c && i.size === sz); if (!it) return;
+        it.qty = delta === null ? 0 : it.qty + delta;
+        if (it.qty < 1) bag = bag.filter((i) => i !== it);
+        saveBag(); atualizarLateral(); mostrarRevisao(dados);
+      };
+      revisao.querySelectorAll("[data-rq]").forEach((b) => b.addEventListener("click", () => mudar(b.dataset.k, Number(b.dataset.rq))));
+      revisao.querySelectorAll("[data-rrm]").forEach((b) => b.addEventListener("click", () => mudar(b.dataset.rrm, null)));
+      document.getElementById("finish").addEventListener("click", () => enviarPedido(dados));
+      const topo = grid.getBoundingClientRect().top + window.scrollY - 120;
+      if (window.scrollY > topo) window.scrollTo(0, Math.max(0, topo));
+    }
+    const atualizarLateral = () => {
+      const r0 = resumo(enderecoDoForm());
+      const ml = app.querySelector(".checkout-summary .mini-list");
+      if (ml) ml.innerHTML = r0.linhas.map((l) => `<li>${IMG(l.m.img, l.m.name)}<div><p>${esc(l.m.name)}</p><span>Tamanho ${l.size} · ${l.qty}x</span></div><strong>${brl(l.m.precoNum * l.qty)}</strong></li>`).join("");
+      atualizarTotais();
+    };
+
+    async function enviarPedido(data) {
       const btn = document.getElementById("finish"); btn.disabled = true; btn.textContent = "Enviando…";
       const erroEl = document.getElementById("form-erro"); erroEl.textContent = "";
       const pg = await pagamentoOnline();
@@ -815,7 +902,7 @@
         `Frete: ${r2.frete ? brl(r2.frete) : r2.freteLocal ? `Grátis (${FRETE_GRATIS_LOCAL.nome})` : "Grátis"}`,
         `*Total: ${brl(r2.total)}*`,
         `Pagamento: ${data.pagamento}`, ``,
-        `*Cliente*`, `Nome: ${data.nome.trim()}`, `Telefone: ${maskPhone(data.telefone)}`,
+        `*Cliente*`, `Nome: ${data.nome.trim()}`, `CPF: ${maskCpf(data.cpf)}`, `Telefone: ${maskPhone(data.telefone)}`, `E-mail: ${data.email}`,
         `Quer receber cupons e novidades: ${data.novidades ? "Sim" : "Não"}`, ``,
         `*Endereço de entrega*`, endereco,
         avisoEstoque ? `\n${avisoEstoque}` : null,
@@ -828,7 +915,7 @@
       history.pushState(null, "", "/pedido-enviado");
       router();
       window.location.href = pedido.wa;
-    });
+    }
   }
 
   // Baixa no estoque: apaga da planilha as camisas lisas do pedido (cor + tamanho).
@@ -949,6 +1036,7 @@
             <header><strong>${esc(p.pedido || "#" + p.id)}</strong><span class="sit sit-${esc(p.status)}">${esc(p.situacao)}</span></header>
             <p class="ped-meta">${quando(p.data)} · ${esc(p.valor)} · ${esc(p.forma)}</p>
             <p><b>${esc(p.nome || "—")}</b>${p.telefone ? ` · ${zap(p.telefone) ? `<a href="${zap(p.telefone)}" target="_blank" rel="noopener">${esc(p.telefone)}</a>` : esc(p.telefone)}` : ""}</p>
+            ${p.cpf || p.email ? `<p class="ped-meta">${[p.cpf && "CPF " + esc(p.cpf), p.email && `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`].filter(Boolean).join(" · ")}</p>` : ""}
             ${p.itens ? `<p>${esc(p.itens).replace(/; /g, "<br>")}</p>` : ""}
             ${p.endereco ? `<p class="ped-end">${esc(p.endereco).replace(/ \| /g, "<br>")}</p>` : ""}
             ${p.cupom ? `<p class="ped-meta">Cupom: ${esc(p.cupom)}</p>` : ""}
@@ -995,14 +1083,14 @@
     .map(([, qty, name, code, size]) => ({ qty: Number(qty), name, code, size }));
   const STATUS_CLASSE = { approved: "approved", pending: "pending", in_process: "pending", criado: "pending", whatsapp: "whatsapp" };
 
-  async function consultarCompra(pedido, telefone) {
+  async function consultarCompra(pedido, contato) {
     const r = await fetch("/api/minhas-compras", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ pedido, telefone }) });
+      body: JSON.stringify({ pedido, contato }) });
     const j = await r.json().catch(() => ({}));
     return { ok: r.ok, status: r.status, j };
   }
-  const compraDoServidor = (j, telefone, antiga = {}) => ({ ...antiga, id: j.pedido, data: antiga.data || j.data, canal: "mercadopago",
-    status: j.status, situacao: j.situacao, total: j.valor, forma: j.forma, telefone,
+  const compraDoServidor = (j, contato, antiga = {}) => ({ ...antiga, id: j.pedido, data: antiga.data || j.data, canal: "mercadopago",
+    status: j.status, situacao: j.situacao, total: j.valor, forma: j.forma, telefone: antiga.telefone || contato,
     itens: itensDeTexto(j.itens).length ? itensDeTexto(j.itens) : antiga.itens || [], frete: j.frete, desconto: j.desconto, promocao: j.promocao, cupom: j.cupom });
 
   function MinhasCompras() {
@@ -1029,10 +1117,10 @@
         ${lista.length ? `<div class="compras">${lista.map(cartao).join("")}</div>` : `<div class="empty"><a href="/produtos" class="btn-outline">Ver o acervo</a></div>`}
         <section class="busca-compra">
           <h2>Comprou em outro aparelho?</h2>
-          <p class="hint">Digite o número do pedido (começa com AL, está no comprovante e na mensagem da compra) e o telefone usado na compra. Vale para pedidos pagos pelo site.</p>
+          <p class="hint">Digite o número do pedido (começa com AL, está no comprovante e na mensagem da compra) e o telefone, CPF ou e-mail usado na compra. Vale para pedidos pagos pelo site.</p>
           <form id="busca-compra" novalidate>
             <div class="field"><label for="bc-pedido">Número do pedido</label><input id="bc-pedido" name="pedido" placeholder="AL261127-AB12" autocapitalize="characters" autocomplete="off" value="${esc(busca.pedido || "")}" /></div>
-            <div class="field"><label for="bc-tel">Telefone</label><input id="bc-tel" name="telefone" inputmode="tel" autocomplete="tel" placeholder="(17) 99999-9999" value="${esc(busca.telefone || "")}" /></div>
+            <div class="field"><label for="bc-tel">Telefone, CPF ou e-mail</label><input id="bc-tel" name="contato" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Como você se identificou na compra" value="${esc(busca.contato || "")}" /></div>
             <button class="btn-primary" type="submit">Buscar pedido</button>
           </form>
           <p class="form-erro" id="bc-erro">${esc(busca.erro || "")}</p>
@@ -1040,16 +1128,16 @@
         ${lista.length ? `<p class="limpar-compras"><button type="button" id="limpar-compras">Apagar o histórico deste aparelho</button></p>` : ""}
       </div>`;
       const f = document.getElementById("busca-compra");
-      f.elements.telefone.addEventListener("input", (e) => (e.target.value = maskPhone(e.target.value)));
       f.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const pedido = f.elements.pedido.value.trim().toUpperCase(), telefone = onlyDigits(f.elements.telefone.value);
+        const bruto = f.elements.contato.value.trim(), pedido = f.elements.pedido.value.trim().toUpperCase();
+        const contato = bruto.includes("@") ? bruto.toLowerCase() : onlyDigits(bruto);
         const btn = f.querySelector("button"); btn.disabled = true; btn.textContent = "Buscando…";
         let r;
-        try { r = await consultarCompra(pedido, telefone); } catch { r = { ok: false, j: { erro: "Sem conexão. Tente de novo." } }; }
+        try { r = await consultarCompra(pedido, contato); } catch { r = { ok: false, j: { erro: "Sem conexão. Tente de novo." } }; }
         if (currentPath !== "/minhas-compras") return;
-        if (!r.ok) return render({ pedido, telefone: maskPhone(telefone), erro: r.j.erro || "Não foi possível buscar agora." });
-        salvarCompra(compraDoServidor(r.j, telefone, lerCompras().find((c) => c.id === r.j.pedido)));
+        if (!r.ok) return render({ pedido, contato: bruto, erro: r.j.erro || "Não foi possível buscar agora." });
+        salvarCompra(compraDoServidor(r.j, contato, lerCompras().find((c) => c.id === r.j.pedido)));
         render();
         toast("Pedido encontrado e salvo neste aparelho.");
       });

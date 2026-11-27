@@ -25,14 +25,27 @@ export const EXCLUIR = {
 const txt = (v, max = 120) => String(v ?? "").trim().slice(0, max);
 const digits = (v) => String(v ?? "").replace(/\D/g, "");
 
+// CPF com os dois dígitos verificadores certos
+export function cpfValido(v) {
+  const d = digits(v);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += Number(d[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+  return dv(9) === Number(d[9]) && dv(10) === Number(d[10]);
+}
+export const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) && e.length <= 120;
+const cpfFmt = (d) => `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+
 export function validarCliente(c = {}) {
   const cli = {
     nome: txt(c.nome, 80), telefone: digits(c.telefone).slice(0, 11), cep: digits(c.cep).slice(0, 8),
     rua: txt(c.rua), numero: txt(c.numero, 20), complemento: txt(c.complemento, 80),
     bairro: txt(c.bairro, 80), cidade: txt(c.cidade, 80), uf: txt(c.uf, 2).toUpperCase(), novidades: !!c.novidades,
+    cpf: digits(c.cpf).slice(0, 11), email: txt(c.email, 120).toLowerCase(),
   };
   if (cli.nome.split(/\s+/).length < 2) return { erro: "Digite nome e sobrenome." };
   if (cli.telefone.length < 10) return { erro: "Telefone inválido." };
+  if (!cpfValido(cli.cpf)) return { erro: "CPF inválido." };
+  if (!emailValido(cli.email)) return { erro: "E-mail inválido." };
   if (cli.cep.length !== 8) return { erro: "CEP inválido." };
   for (const k of ["rua", "numero", "bairro", "cidade"]) if (!cli[k]) return { erro: "Endereço incompleto." };
   if (!/^[A-Z]{2}$/.test(cli.uf)) return { erro: "Estado inválido." };
@@ -49,7 +62,8 @@ export function montarPreferencia({ id, calc, cli, pagamento, origin }) {
   return {
     items: [{ id, title: `Pedido ${id} — ALIANCE`, description: itensTxt.slice(0, 250), quantity: 1, unit_price: calc.total, currency_id: "BRL", category_id: "fashion" }],
     payer: {
-      name: primeiro, surname: resto.join(" "),
+      name: primeiro, surname: resto.join(" "), email: cli.email,
+      identification: { type: "CPF", number: cli.cpf },
       phone: { area_code: cli.telefone.slice(0, 2), number: cli.telefone.slice(2) },
       address: { zip_code: cli.cep, street_name: cli.rua, street_number: cli.numero },
     },
@@ -59,7 +73,7 @@ export function montarPreferencia({ id, calc, cli, pagamento, origin }) {
     statement_descriptor: "ALIANCE",
     payment_methods: { excluded_payment_types: EXCLUIR[pagamento].map((t) => ({ id: t })), installments: 12 },
     metadata: {
-      pedido: id, nome: cli.nome, telefone: fone(cli.telefone), endereco, itens: itensTxt,
+      pedido: id, nome: cli.nome, telefone: fone(cli.telefone), cpf: cpfFmt(cli.cpf), email: cli.email, endereco, itens: itensTxt,
       cupom: calc.cupom, promocao: calc.promocao, subtotal: brl(calc.subtotal), desconto: brl(calc.desconto), frete: brl(calc.frete),
       total: brl(calc.total), forma_escolhida: pagamento, novidades: cli.novidades ? "Sim" : "Não",
     },
@@ -124,7 +138,7 @@ export function resumoPagamento(p) {
     pedido: p.external_reference || md.pedido || "", valor: brl(Number(p.transaction_amount || 0)),
     forma: (FORMA[p.payment_type_id] || p.payment_type_id || "") + parc,
     nome: md.nome || [p.payer?.first_name, p.payer?.last_name].filter(Boolean).join(" "),
-    telefone: md.telefone || "", endereco: md.endereco || "", itens: md.itens || p.description || "",
+    telefone: md.telefone || "", cpf: md.cpf || "", email: md.email || "", endereco: md.endereco || "", itens: md.itens || p.description || "",
     cupom: md.cupom || "", promocao: md.promocao || "", desconto: md.desconto || "", frete: md.frete || "", novidades: md.novidades || "",
   };
 }
@@ -164,18 +178,23 @@ async function minhaCompra(req, env) {
   let body;
   try { body = await req.json(); } catch { return json({ erro: "Dados inválidos." }, 400); }
   const pedido = String(body.pedido || "").trim().toUpperCase();
-  const tel = String(body.telefone || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  const contato = String(body.contato || body.telefone || "").trim();
+  const email = contato.includes("@") ? contato.toLowerCase() : "";
+  const tel = email ? "" : contato.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
   if (!/^AL\d{6}-[A-Z0-9]{4}$/.test(pedido)) return json({ erro: "Número do pedido inválido. Ele começa com AL, por exemplo AL261127-AB12." }, 400);
-  if (tel.length < 10) return json({ erro: "Digite o telefone com DDD." }, 400);
+  if (!email && tel.length < 10) return json({ erro: "Digite o telefone com DDD, o CPF ou o e-mail usado na compra." }, 400);
   const r = await fetch(`${MP}/v1/payments/search?external_reference=${encodeURIComponent(pedido)}&sort=date_created&criteria=desc&limit=20`, {
     headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` },
   });
   if (!r.ok) return json({ erro: "Não foi possível consultar agora. Tente de novo." }, 502);
   const j = await r.json();
-  const telDe = (p) => String(p.metadata?.telefone || "").replace(/\D/g, "");
-  const pags = (j.results || []).filter((p) => p.external_reference === pedido && telDe(p) && telDe(p) === tel);
+  const so = (v) => String(v || "").replace(/\D/g, "");
+  const confere = (md = {}) => email
+    ? String(md.email || "").toLowerCase() === email
+    : (so(md.telefone) && so(md.telefone) === tel) || (so(md.cpf) && so(md.cpf) === tel);
+  const pags = (j.results || []).filter((p) => p.external_reference === pedido && confere(p.metadata));
   // mesma resposta para "não existe" e "telefone errado", para não revelar pedidos de outras pessoas
-  if (!pags.length) return json({ erro: "Não encontramos um pedido pago pelo site com esse número e telefone. Pedidos enviados pelo WhatsApp não aparecem aqui: fale com a loja." }, 404);
+  if (!pags.length) return json({ erro: "Não encontramos um pedido pago pelo site com esse número e esses dados. Pedidos enviados pelo WhatsApp não aparecem aqui: fale com a loja." }, 404);
   const p = pags.find((x) => x.status === "approved") || pags[0];
   const r0 = resumoPagamento(p);
   return json({ pedido: r0.pedido, data: r0.data, situacao: r0.situacao, status: r0.status, valor: r0.valor, forma: r0.forma,
