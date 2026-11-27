@@ -395,6 +395,29 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 .sit-pending, .sit-in_process { border-color: var(--accent); color: var(--accent); }
 .sit-rejected, .sit-cancelled, .sit-refunded, .sit-charged_back { color: var(--fg-60); }
 
+/* ---------- Minhas compras ---------- */
+.compras { margin-top: 2rem; display: grid; gap: 1rem; }
+.compra { border: 1px solid var(--border); background: var(--card); padding: 1.25rem; display: grid; gap: .9rem; font-size: .9rem; }
+.compra header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: .6rem 1rem; font-size: 1rem; }
+.compra header strong { white-space: nowrap; }
+.compra-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.compra-itens li { display: flex; gap: .9rem; align-items: center; }
+.compra-foto { flex: 0 0 3.5rem; width: 3.5rem; aspect-ratio: 3 / 4; background: var(--secondary); overflow: hidden; }
+.compra-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.compra-itens a { text-decoration: none; }
+.compra-itens a:hover { text-decoration: underline; }
+.compra-total { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-top: .9rem; border-top: 1px solid var(--border); color: var(--fg-80); }
+.compra-total strong { font-weight: 500; font-size: 1.05rem; color: var(--foreground); }
+.compra .small-btn { justify-self: start; }
+.sit-whatsapp { color: var(--fg-80); }
+.busca-compra { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+.busca-compra h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; }
+.busca-compra form { margin-top: 1.25rem; display: grid; gap: 1rem; }
+@media (min-width: 700px) { .busca-compra form { grid-template-columns: 1fr 1fr auto; align-items: end; } }
+.busca-compra .btn-primary { padding: .95rem 1.6rem; }
+.limpar-compras { margin-top: 2.5rem; text-align: center; }
+.limpar-compras button { font-size: .75rem; color: var(--fg-60); text-decoration: underline; }
+
 /* ---------- Estoque ---------- */
 .card-size.off, .card-size.off:hover, .size.off { opacity: .35; text-decoration: line-through; cursor: not-allowed; border-color: var(--border) !important; background: transparent !important; color: inherit !important; }
 .card-esgotado { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: .5rem 1.1rem; background: oklch(0.19 0.018 55 / 85%); font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; pointer-events: none; }

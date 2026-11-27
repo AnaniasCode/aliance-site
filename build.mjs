@@ -46,6 +46,7 @@ const pages = [
   { url: "/finalizar", title: "Finalizar pedido — ALIANCE®", desc: "Entrega e pagamento do seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/pedido-enviado", title: "Pedido enviado — ALIANCE®", desc: "Seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/pagamento-retorno", title: "Pagamento — ALIANCE®", desc: "Retorno do pagamento do seu pedido Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
+  { url: "/minhas-compras", title: "Minhas compras — ALIANCE®", desc: "Acompanhe suas compras na Aliance.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/pedidos", title: "Pedidos — ALIANCE®", desc: "Área da loja.", noindex: true, img: "/assets/hero_1.jpg" },
   { url: "/sacola", title: "Sacola — ALIANCE®", desc: "Suas peças escolhidas, cupom de desconto e frete.", noindex: true, img: "/assets/hero_1.jpg" },
   ...modelos.map((m) => ({ url: `/produtos/${m.slug}`, title: `${m.name} — ALIANCE®`, desc: m.descricao, type: "product", img: m.img })),

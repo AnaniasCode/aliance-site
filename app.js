@@ -136,7 +136,7 @@
   const navD = document.getElementById("nav-desktop");
   const navM = document.getElementById("nav-mobile");
   navD.innerHTML = links.map(([to, l]) => `<a href="${to}" data-to="${to}">${l}</a>`).join("");
-  navM.innerHTML = links.map(([to, l]) => `<a href="${to}">${l}</a>`).join("");
+  navM.innerHTML = [...links, ["/minhas-compras", "Minhas compras"]].map(([to, l]) => `<a href="${to}">${l}</a>`).join("");
   const header = document.getElementById("header");
   const menuBtn = document.getElementById("menu-btn");
   let menuOpen = false, currentPath = "/";
@@ -789,6 +789,8 @@
           const est = await baixarEstoque(j.id, data, resumo(), "Ir para o pagamento");
           if (!est.ok) return;
           try { localStorage.setItem("aliance-pedido-pendente", JSON.stringify({ id: j.id, total: brl(j.total), forma: data.pagamento })); } catch {}
+          salvarCompra({ id: j.id, data: new Date().toISOString(), canal: "mercadopago", status: "criado", situacao: "Aguardando pagamento",
+            itens: itensCompra(resumo().linhas), total: brl(j.total), forma: data.pagamento, telefone: onlyDigits(data.telefone) });
           window.location.href = j.url;
         } catch (err) {
           erroEl.textContent = err.message;
@@ -820,6 +822,8 @@
       ].filter((x) => x !== null).join("\n");
       const pedido = { id, msg, total: brl(r2.total), wa: whatsLink(WHATSAPP_PEDIDOS, msg) };
       try { sessionStorage.setItem("aliance-ultimo-pedido", JSON.stringify(pedido)); } catch {}
+      salvarCompra({ id, data: d.toISOString(), canal: "whatsapp", status: "whatsapp", situacao: "Enviado pelo WhatsApp",
+        itens: itensCompra(r2.linhas), total: brl(r2.total), forma: data.pagamento, telefone: onlyDigits(data.telefone) });
       bag = []; saveBag(); setCupomCode("");
       history.pushState(null, "", "/pedido-enviado");
       router();
@@ -872,6 +876,12 @@
     const id = esc(ref || (pend && pend.id) || "");
     const total = pend && pend.id === ref ? esc(pend.total) : "";
     const contato = (t) => `<a href="${whatsLink(WHATSAPP_PEDIDOS, t)}" class="btn-outline" target="_blank" rel="noopener">Falar com a loja no WhatsApp</a>`;
+    const idCompra = ref || (pend && pend.id) || "";
+    if (idCompra && lerCompras().some((c) => c.id === idCompra)) {
+      if (st === "approved") salvarCompra({ id: idCompra, status: "approved", situacao: "Pago" });
+      else if (st === "pending" || st === "in_process") salvarCompra({ id: idCompra, status: st, situacao: st === "pending" ? "Aguardando pagamento" : "Em análise" });
+    }
+    const verCompras = `<a href="/minhas-compras" class="small-btn">Ver minhas compras</a>`;
     let html;
     if (st === "approved") {
       bag = []; saveBag(); setCupomCode("");
@@ -879,12 +889,12 @@
       html = `${pageTitle("Pedido " + id, "Pagamento aprovado!", "Obrigado pela compra. A loja já recebeu seu pedido e vai preparar o envio.")}
         <div class="done">${total ? `<p class="hint">Total pago: <strong>${total}</strong></p>` : ""}
         <p class="hint">Qualquer dúvida sobre a entrega, fale com a gente:</p>
-        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento foi aprovado.`)}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
+        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento foi aprovado.`)}${verCompras}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
     } else if (st === "pending" || st === "in_process") {
       bag = []; saveBag(); setCupomCode("");
       html = `${pageTitle("Pedido " + id, "Aguardando pagamento", "Seu pedido foi registrado. Assim que o pagamento for confirmado pelo Mercado Pago, a loja prepara o envio.")}
         <div class="done"><p class="hint">Se escolheu Pix, conclua o pagamento no app do seu banco usando o código do Mercado Pago.</p>
-        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento está em processamento.`)}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
+        <div class="done-actions">${contato(`Olá! Fiz o pedido ${ref} pelo site e o pagamento está em processamento.`)}${verCompras}<a href="/produtos" class="small-btn">Continuar comprando</a></div></div>`;
     } else {
       html = `${pageTitle(id ? "Pedido " + id : "Pagamento", "Pagamento não concluído", "O pagamento não foi aprovado ou foi cancelado. Suas peças continuam na sacola.")}
         <div class="done"><a href="/finalizar" class="btn-primary block">Tentar pagar de novo</a>
@@ -962,9 +972,106 @@
         <a href="${p.wa}" class="btn-primary block" target="_blank" rel="noopener">Abrir o WhatsApp de novo</a>
         <p class="hint">Se o WhatsApp não abriu, toque no botão acima. Total do pedido: <strong>${esc(p.total)}</strong>.</p>
         <pre class="pedido-txt">${esc(p.msg).replace(/\*/g, "")}</pre>
-        <a href="/produtos" class="small-btn">Continuar comprando</a>
+        <div class="done-actions"><a href="/minhas-compras" class="small-btn">Ver minhas compras</a><a href="/produtos" class="small-btn">Continuar comprando</a></div>
       </div>
     </div>`;
+  }
+
+  /* ---------- Minhas compras (cliente) ----------
+     Fica guardado no aparelho onde a compra foi feita. Em outro aparelho, o cliente busca
+     pelo número do pedido + telefone (só pedidos pagos pelo site, lidos do Mercado Pago). */
+  const COMPRAS_KEY = "aliance-compras";
+  const lerCompras = () => { try { const v = JSON.parse(localStorage.getItem(COMPRAS_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
+  const gravarCompras = (l) => { try { localStorage.setItem(COMPRAS_KEY, JSON.stringify(l.slice(0, 50))); } catch {} };
+  function salvarCompra(c) {
+    const l = lerCompras(), i = l.findIndex((x) => x.id === c.id);
+    if (i >= 0) l[i] = { ...l[i], ...c }; else l.unshift(c);
+    l.sort((a, b) => String(b.data || "").localeCompare(String(a.data || "")));
+    gravarCompras(l);
+  }
+  const itensCompra = (linhas) => linhas.map((l) => ({ code: l.code, name: l.m.name, size: l.size, qty: l.qty }));
+  // "2x Monte Carlo (AL-006) Tam. G; 1x ..." (como o servidor guarda) → lista
+  const itensDeTexto = (t) => String(t || "").split(/;\s*/).map((x) => x.match(/^(\d+)x (.+?) \((AL-\d+)\) Tam\. (\S+)/)).filter(Boolean)
+    .map(([, qty, name, code, size]) => ({ qty: Number(qty), name, code, size }));
+  const STATUS_CLASSE = { approved: "approved", pending: "pending", in_process: "pending", criado: "pending", whatsapp: "whatsapp" };
+
+  async function consultarCompra(pedido, telefone) {
+    const r = await fetch("/api/minhas-compras", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+      body: JSON.stringify({ pedido, telefone }) });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok, status: r.status, j };
+  }
+  const compraDoServidor = (j, telefone, antiga = {}) => ({ ...antiga, id: j.pedido, data: antiga.data || j.data, canal: "mercadopago",
+    status: j.status, situacao: j.situacao, total: j.valor, forma: j.forma, telefone,
+    itens: itensDeTexto(j.itens).length ? itensDeTexto(j.itens) : antiga.itens || [], frete: j.frete, desconto: j.desconto, promocao: j.promocao, cupom: j.cupom });
+
+  function MinhasCompras() {
+    const quando = (d) => d ? new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : "";
+    const cartao = (c) => {
+      const m0 = (code) => modelos.find((m) => m.code === code);
+      const zap = whatsLink(WHATSAPP_PEDIDOS, `Olá! Queria saber do meu pedido ${c.id} feito pelo site.`);
+      return `<article class="compra">
+        <header><div><strong>Pedido ${esc(c.id)}</strong><p class="ped-meta">${esc(quando(c.data))}</p></div>
+          <span class="sit sit-${esc(STATUS_CLASSE[c.status] || c.status || "")}">${esc(c.situacao || "")}</span></header>
+        <ul class="compra-itens">${(c.itens || []).map((it) => { const m = m0(it.code); return `<li>
+          ${m ? `<a href="/produtos/${m.slug}" class="compra-foto">${IMG(m.fotos.costas, m.name)}</a>` : `<span class="compra-foto"></span>`}
+          <div>${m ? `<a href="/produtos/${m.slug}">${esc(it.name)}</a>` : esc(it.name)}<p class="ped-meta">${esc(it.code)} · Tam. ${esc(it.size)} · ${esc(it.qty)} un.</p></div></li>`; }).join("")}</ul>
+        <p class="compra-total"><span>${esc(c.forma || "")}</span><strong>${esc(c.total || "")}</strong></p>
+        ${c.canal === "whatsapp" ? `<p class="ped-meta">Pedido enviado pelo WhatsApp: o pagamento e a entrega são combinados direto com a loja.</p>` : ""}
+        ${c.status === "nao_concluido" ? `<p class="ped-meta">O pagamento não foi concluído no Mercado Pago, então este pedido não foi confirmado.</p>` : ""}
+        <a href="${zap}" class="small-btn" target="_blank" rel="noopener">Falar com a loja sobre este pedido</a>
+      </article>`;
+    };
+    const render = (busca = {}) => {
+      const lista = lerCompras();
+      app.innerHTML = `<div class="container page" style="max-width:52rem">
+        ${pageTitle("Sua conta", "Minhas compras", lista.length ? "As compras feitas neste aparelho aparecem aqui sozinhas." : "Ainda não há compras feitas por este aparelho.")}
+        ${lista.length ? `<div class="compras">${lista.map(cartao).join("")}</div>` : `<div class="empty"><a href="/produtos" class="btn-outline">Ver o acervo</a></div>`}
+        <section class="busca-compra">
+          <h2>Comprou em outro aparelho?</h2>
+          <p class="hint">Digite o número do pedido (começa com AL, está no comprovante e na mensagem da compra) e o telefone usado na compra. Vale para pedidos pagos pelo site.</p>
+          <form id="busca-compra" novalidate>
+            <div class="field"><label for="bc-pedido">Número do pedido</label><input id="bc-pedido" name="pedido" placeholder="AL261127-AB12" autocapitalize="characters" autocomplete="off" value="${esc(busca.pedido || "")}" /></div>
+            <div class="field"><label for="bc-tel">Telefone</label><input id="bc-tel" name="telefone" inputmode="tel" autocomplete="tel" placeholder="(17) 99999-9999" value="${esc(busca.telefone || "")}" /></div>
+            <button class="btn-primary" type="submit">Buscar pedido</button>
+          </form>
+          <p class="form-erro" id="bc-erro">${esc(busca.erro || "")}</p>
+        </section>
+        ${lista.length ? `<p class="limpar-compras"><button type="button" id="limpar-compras">Apagar o histórico deste aparelho</button></p>` : ""}
+      </div>`;
+      const f = document.getElementById("busca-compra");
+      f.elements.telefone.addEventListener("input", (e) => (e.target.value = maskPhone(e.target.value)));
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const pedido = f.elements.pedido.value.trim().toUpperCase(), telefone = onlyDigits(f.elements.telefone.value);
+        const btn = f.querySelector("button"); btn.disabled = true; btn.textContent = "Buscando…";
+        let r;
+        try { r = await consultarCompra(pedido, telefone); } catch { r = { ok: false, j: { erro: "Sem conexão. Tente de novo." } }; }
+        if (currentPath !== "/minhas-compras") return;
+        if (!r.ok) return render({ pedido, telefone: maskPhone(telefone), erro: r.j.erro || "Não foi possível buscar agora." });
+        salvarCompra(compraDoServidor(r.j, telefone, lerCompras().find((c) => c.id === r.j.pedido)));
+        render();
+        toast("Pedido encontrado e salvo neste aparelho.");
+      });
+      const limpar = document.getElementById("limpar-compras");
+      if (limpar) limpar.addEventListener("click", () => {
+        if (!confirm("Apagar a lista de compras deste aparelho? (As compras não são canceladas.)")) return;
+        gravarCompras([]); render();
+      });
+    };
+    render();
+    // atualiza a situação das compras pagas pelo site (ex.: Pix que caiu depois, estorno)
+    const DIA = 86400000;
+    const paraAtualizar = lerCompras().filter((c) => c.canal === "mercadopago" && c.telefone && Date.now() - new Date(c.data).getTime() < 120 * DIA).slice(0, 10);
+    if (!paraAtualizar.length) return;
+    Promise.all(paraAtualizar.map(async (c) => {
+      try {
+        const r = await consultarCompra(c.id, c.telefone);
+        if (r.ok) salvarCompra(compraDoServidor(r.j, c.telefone, c));
+        else if (r.status === 404 && Date.now() - new Date(c.data).getTime() > 2 * DIA && c.status !== "approved")
+          salvarCompra({ id: c.id, status: "nao_concluido", situacao: "Pagamento não concluído" });
+      } catch {}
+    })).then(() => { if (currentPath === "/minhas-compras" && !document.activeElement?.closest?.("#busca-compra")) render(); });
   }
 
   function Sobre() {
@@ -1027,7 +1134,7 @@
   }
 
   /* ---------- Roteador (endereços normais, sem #) ---------- */
-  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/pagamento-retorno": "Pagamento — ALIANCE®", "/pedidos": "Pedidos — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
+  const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/pagamento-retorno": "Pagamento — ALIANCE®", "/pedidos": "Pedidos — ALIANCE®", "/minhas-compras": "Minhas compras — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
   /* ---------- Faixa da promoção no topo, com contador ---------- */
   const bfBar = document.getElementById("bf-bar");
   let bfUltimoEstado = promoEstado();
@@ -1089,6 +1196,7 @@
     else if (path === "/pedido-enviado") PedidoEnviado();
     else if (path === "/pagamento-retorno") PagamentoRetorno(query);
     else if (path === "/pedidos") Pedidos();
+    else if (path === "/minhas-compras") MinhasCompras();
     else if (path === "/sobre") Sobre();
     else if (path === "/contato") Contato();
     else NotFound();

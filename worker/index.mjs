@@ -157,6 +157,32 @@ async function listarPedidos(req, env) {
   return json({ pedidos });
 }
 
+// Cliente consulta o próprio pedido: precisa do número do pedido E do telefone usado na compra.
+// Devolve só o necessário para acompanhar a compra (sem endereço completo).
+async function minhaCompra(req, env) {
+  if (!env.MP_ACCESS_TOKEN) return json({ erro: "Consulta indisponível no momento." }, 503);
+  let body;
+  try { body = await req.json(); } catch { return json({ erro: "Dados inválidos." }, 400); }
+  const pedido = String(body.pedido || "").trim().toUpperCase();
+  const tel = String(body.telefone || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  if (!/^AL\d{6}-[A-Z0-9]{4}$/.test(pedido)) return json({ erro: "Número do pedido inválido. Ele começa com AL, por exemplo AL261127-AB12." }, 400);
+  if (tel.length < 10) return json({ erro: "Digite o telefone com DDD." }, 400);
+  const r = await fetch(`${MP}/v1/payments/search?external_reference=${encodeURIComponent(pedido)}&sort=date_created&criteria=desc&limit=20`, {
+    headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` },
+  });
+  if (!r.ok) return json({ erro: "Não foi possível consultar agora. Tente de novo." }, 502);
+  const j = await r.json();
+  const telDe = (p) => String(p.metadata?.telefone || "").replace(/\D/g, "");
+  const pags = (j.results || []).filter((p) => p.external_reference === pedido && telDe(p) && telDe(p) === tel);
+  // mesma resposta para "não existe" e "telefone errado", para não revelar pedidos de outras pessoas
+  if (!pags.length) return json({ erro: "Não encontramos um pedido pago pelo site com esse número e telefone. Pedidos enviados pelo WhatsApp não aparecem aqui: fale com a loja." }, 404);
+  const p = pags.find((x) => x.status === "approved") || pags[0];
+  const r0 = resumoPagamento(p);
+  return json({ pedido: r0.pedido, data: r0.data, situacao: r0.situacao, status: r0.status, valor: r0.valor, forma: r0.forma,
+    itens: r0.itens, cupom: r0.cupom, promocao: r0.promocao, desconto: r0.desconto, frete: r0.frete,
+    cidade: (r0.endereco.split(" | ")[1] || "").trim() });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -169,6 +195,7 @@ export default {
       return json({ erro: "Método não permitido." }, 405);
     }
     if (url.pathname === "/api/pedidos" && req.method === "GET") return listarPedidos(req, env);
+    if (url.pathname === "/api/minhas-compras" && req.method === "POST") return minhaCompra(req, env);
     if (url.pathname.startsWith("/api/")) return json({ erro: "Não encontrado." }, 404);
     return env.ASSETS.fetch(req);
   },
