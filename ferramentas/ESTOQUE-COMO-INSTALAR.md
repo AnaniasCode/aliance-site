@@ -4,15 +4,28 @@ O site lê o estoque da planilha e, a cada pedido, apaga da planilha as camisas 
 (copiando-as antes para a aba **"Pedidos do site"**). Tudo é feito por um script do Google
 que fica dentro da própria planilha. Gratuito, e não gasta créditos da Netlify.
 
+## Formato da planilha (versão 2)
+Primeira aba (gid 0), uma linha por cor e uma coluna por tamanho, com a quantidade
+**disponível para venda**:
+
+| COR | P | M | G | GG | TOTAL |
+|---|---|---|---|---|---|
+| BRANCA | 2 | 2 | 5 | 1 | =SOMA |
+| PRETA | 0 | 3 | 0 | 0 | =SOMA |
+| TOTAL | =SOMA | … | | | |
+
+- O cabeçalho é a linha com **COR** na coluna A (pode ter títulos acima).
+- Coluna TOTAL e linha TOTAL são ignoradas pelo script (podem ter fórmulas).
+- Repor estoque: é só mudar o número. Cor/tamanho novo: acrescente linha/coluna antes do TOTAL.
+- Camisas **pretas** do site usam a linha **PRETA**; as demais usam **BRANCA**.
+
 ## Regras
-- Conta como estoque só a linha com **DISPONIBILIDADE = DISPONÍVEL** (VENDIDA, PRODUÇÃO e
-  EM NEGOCIAÇÃO não contam).
-- Cor da camisa lisa de cada peça: camisas **pretas** usam as linhas **PRETA**; as demais usam
-  **BRANCA** (coluna COR). O estoque de "PRETA M" vale para todas as estampas pretas.
-- Pedido feito no site → as linhas DISPONÍVEIS da cor/tamanho são **apagadas** e copiadas para
-  "Pedidos do site" (situação EM NEGOCIAÇÃO). Se a venda não fechar, copie a linha de volta para
-  o estoque com DISPONÍVEL.
-- Se faltar peça na hora de finalizar, nada é apagado e o cliente é avisado.
+- Pedido feito no site → diminui a quantidade da cor/tamanho e registra cada peça na aba
+  **"Pedidos do site"** com SITUAÇÃO = **EM NEGOCIAÇÃO**.
+- Na aba "Pedidos do site", mude a SITUAÇÃO para **VENDIDA** quando fechar a venda, ou para
+  **CANCELADO** se não fechar: a peça **volta sozinha** ao estoque e a situação vira
+  "CANCELADO — devolvido ao estoque".
+- Se faltar peça na hora de finalizar, nada é alterado e o cliente é avisado.
 - Se a planilha estiver fora do ar, o pedido segue pelo WhatsApp com o aviso
   "⚠️ Estoque NÃO foi baixado automaticamente".
 
