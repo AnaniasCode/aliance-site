@@ -416,3 +416,39 @@ body.modo-painel .header-inner { justify-content: center; }
 body.modo-painel .painel-titulo { display: block; text-align: center; white-space: nowrap; }
 .painel-sep { color: var(--accent); margin: 0 .35em; }
 @media (max-width: 480px) { body.modo-painel .painel-titulo { font-size: 1.35rem; } }
+
+/* ---------- Promoção (Black Friday): faixa do topo, selos e progresso ---------- */
+.bf-bar { display: none; background: #0b0807; border-bottom: 1px solid oklch(0.72 0.09 70 / 35%); color: var(--accent); font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; }
+body.tem-promo .bf-bar { display: block; }
+body.modo-painel .bf-bar { display: none !important; }
+.bf-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: .9rem; padding: .55rem 1rem; color: inherit; }
+.bf-btn strong { color: var(--foreground); font-weight: 500; letter-spacing: .2em; }
+.bf-sep { margin: 0 .55rem; opacity: .6; }
+.bf-tempo { color: var(--foreground); font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+.bf-ver { border-bottom: 1px solid currentColor; padding-bottom: 1px; white-space: nowrap; }
+.bf-tabela { display: none; max-width: 26rem; margin: 0 auto; padding: .25rem 1.25rem 1.1rem; text-transform: none; letter-spacing: normal; color: var(--foreground); font-size: .85rem; }
+.bf-bar.aberto .bf-tabela { display: block; }
+.bf-tit { font-family: var(--font-display); font-size: 1.25rem; text-align: center; margin-bottom: .5rem; color: var(--accent); }
+.bf-tabela table { width: 100%; border-collapse: collapse; }
+.bf-tabela td { padding: .45rem 0; border-bottom: 1px solid var(--border); }
+.bf-tabela td:last-child { text-align: right; color: var(--accent); font-weight: 500; }
+.bf-obs { margin-top: .6rem; font-size: .75rem; color: var(--muted-foreground); text-align: center; }
+@media (max-width: 640px) {
+  .bf-bar { font-size: .62rem; letter-spacing: .06em; }
+  .bf-btn { gap: .4rem; padding: .5rem .6rem; flex-wrap: wrap; }
+  .bf-esconde-cel { display: none; }
+  .bf-sep { margin: 0 .3rem; }
+}
+.card-promo { position: absolute; top: 2.6rem; left: 1rem; padding: .2rem .55rem; background: #0b0807; color: var(--accent); border: 1px solid oklch(0.72 0.09 70 / 45%); font-size: .58rem; letter-spacing: .22em; text-transform: uppercase; pointer-events: none; }
+@media (hover: none), (pointer: coarse) { .card-promo { top: 2.2rem; left: .6rem; font-size: .5rem; letter-spacing: .14em; } }
+.card-price s, .p-price s { color: var(--fg-50); margin-right: .35rem; }
+.preco-promo { color: var(--accent); }
+.p-price .preco-promo { font-size: .8em; }
+.p-promo { margin-top: .6rem; font-size: .85rem; color: var(--fg-80); }
+.promo-tag { display: inline-block; margin-right: .5rem; padding: .15rem .5rem; background: #0b0807; color: var(--accent); border: 1px solid oklch(0.72 0.09 70 / 45%); font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; vertical-align: middle; }
+.promo-prog { margin: 0 0 1.5rem; padding: 1rem 1.1rem 1.5rem; border: 1px solid oklch(0.72 0.09 70 / 35%); background: oklch(0.72 0.09 70 / 6%); font-size: .9rem; }
+.promo-prog strong { color: var(--accent); font-weight: 500; }
+.promo-barra { position: relative; margin: .9rem .6rem 0 0; height: 4px; background: var(--border); border-radius: 999px; }
+.promo-barra span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 999px; transition: width .4s; }
+.promo-barra i { position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 999px; background: var(--card); border: 2px solid var(--accent); }
+.promo-barra i b { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-size: .65rem; font-weight: 400; font-style: normal; color: var(--fg-70); }

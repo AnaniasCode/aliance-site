@@ -10,6 +10,17 @@ window.ALIANCE = (function () {
   const WHATSAPP_PEDIDOS = "5517988351459";
   const FRETE = 24.90; // valor fixo por pedido
 
+  // ---------- Promoção por quantidade (Black Friday) ----------
+  // Desconto nas camisetas (não no frete), pelo TOTAL de camisetas da sacola.
+  // Liga e desliga sozinha nas datas abaixo (horário de Brasília). Não acumula com cupom:
+  // vale o que der mais desconto. Para desligar antes, troque "fim" por uma data passada.
+  const PROMOCAO = {
+    nome: "Black Friday",
+    inicio: "2026-11-27T00:00:00-03:00",
+    fim: "2026-11-28T00:00:00-03:00",
+    faixas: [ { min: 1, pct: 10 }, { min: 2, pct: 15 }, { min: 3, pct: 20 } ],
+  };
+
   // ---------- Estoque (Google Sheets) ----------
   // URL do "App da Web" do script em ferramentas/estoque-apps-script.gs.
   // Vazio = estoque desligado (o site não limita nada).
@@ -114,5 +125,5 @@ window.ALIANCE = (function () {
     return `https://api.whatsapp.com/send?phone=${phone}${text ? `&text=${encodeURIComponent(text)}` : ""}`;
   }
 
-  return { WHATSAPP_PEDIDOS, FRETE, CUPONS, ESTOQUE_URL, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
+  return { PROMOCAO, WHATSAPP_PEDIDOS, FRETE, CUPONS, ESTOQUE_URL, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
 })();

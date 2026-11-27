@@ -1,6 +1,6 @@
 // Cálculo do pedido no servidor (Cloudflare Worker). Usa os dados de catalog.js (gerados em
 // worker/dados.mjs pelo build.mjs), então preço, frete e cupom não podem ser alterados pelo navegador.
-import { modelos, FRETE, CUPONS } from "./dados.mjs";
+import { modelos, FRETE, CUPONS, PROMOCAO } from "./dados.mjs";
 
 const r2 = (v) => Math.round(v * 100) / 100;
 export const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
@@ -20,7 +20,16 @@ export function checarCupom(codigo, subtotal) {
 }
 
 // itens: [{ code, size, qty }]  →  linhas com preço do catálogo + totais
-export function calcularPedido(itens, codigoCupom) {
+// Desconto da promoção por quantidade (0 se fora das datas)
+export function pctPromocao(qtd, agora = Date.now()) {
+  if (!PROMOCAO) return 0;
+  if (agora < Date.parse(PROMOCAO.inicio) || agora >= Date.parse(PROMOCAO.fim)) return 0;
+  let pct = 0;
+  for (const f of PROMOCAO.faixas) if (qtd >= f.min) pct = f.pct;
+  return pct;
+}
+
+export function calcularPedido(itens, codigoCupom, agora = Date.now()) {
   if (!Array.isArray(itens) || !itens.length) throw new Error("Sacola vazia.");
   if (itens.length > 30) throw new Error("Itens demais no pedido.");
   const linhas = itens.map((i) => {
@@ -35,12 +44,24 @@ export function calcularPedido(itens, codigoCupom) {
   const chk = checarCupom(codigoCupom, subtotal);
   if (!chk.ok) throw new Error(chk.erro);
   const cupom = chk.cupom;
-  let desconto = 0, frete = FRETE;
-  if (cupom?.tipo === "percentual") desconto = r2(subtotal * cupom.valor / 100);
-  else if (cupom?.tipo === "valor") desconto = Math.min(subtotal, cupom.valor);
+  let descCupom = 0, frete = FRETE;
+  if (cupom?.tipo === "percentual") descCupom = r2(subtotal * cupom.valor / 100);
+  else if (cupom?.tipo === "valor") descCupom = Math.min(subtotal, cupom.valor);
   else if (cupom?.tipo === "frete") frete = 0;
+  // Promoção por quantidade: não acumula com cupom, vale o maior desconto
+  const qtd = linhas.reduce((a, l) => a + l.qty, 0);
+  const pct = pctPromocao(qtd, agora);
+  let descPromo = pct ? r2(subtotal * pct / 100) : 0;
+  let cupomUsado = cupom;
+  if (pct && cupom) {
+    const economiaCupom = cupom.tipo === "frete" ? FRETE : descCupom;
+    if (descPromo >= economiaCupom) { cupomUsado = null; descCupom = 0; frete = FRETE; }
+    else descPromo = 0;
+  }
+  const desconto = r2(descCupom + descPromo);
   const total = r2(subtotal - desconto + frete);
-  return { linhas, subtotal, desconto, frete, total, cupom: cupom ? cupom.codigo.toUpperCase() : "" };
+  const promocao = descPromo ? `${PROMOCAO.nome} (${qtd} un., ${pct}%)` : "";
+  return { linhas, subtotal, desconto, frete, total, cupom: cupomUsado ? cupomUsado.codigo.toUpperCase() : "", promocao };
 }
 
 export function novoId() {

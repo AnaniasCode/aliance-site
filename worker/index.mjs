@@ -60,7 +60,7 @@ export function montarPreferencia({ id, calc, cli, pagamento, origin }) {
     payment_methods: { excluded_payment_types: EXCLUIR[pagamento].map((t) => ({ id: t })), installments: 12 },
     metadata: {
       pedido: id, nome: cli.nome, telefone: fone(cli.telefone), endereco, itens: itensTxt,
-      cupom: calc.cupom, subtotal: brl(calc.subtotal), desconto: brl(calc.desconto), frete: brl(calc.frete),
+      cupom: calc.cupom, promocao: calc.promocao, subtotal: brl(calc.subtotal), desconto: brl(calc.desconto), frete: brl(calc.frete),
       total: brl(calc.total), forma_escolhida: pagamento, novidades: cli.novidades ? "Sim" : "Não",
     },
   };
@@ -125,7 +125,7 @@ export function resumoPagamento(p) {
     forma: (FORMA[p.payment_type_id] || p.payment_type_id || "") + parc,
     nome: md.nome || [p.payer?.first_name, p.payer?.last_name].filter(Boolean).join(" "),
     telefone: md.telefone || "", endereco: md.endereco || "", itens: md.itens || p.description || "",
-    cupom: md.cupom || "", frete: md.frete || "", novidades: md.novidades || "",
+    cupom: md.cupom || "", promocao: md.promocao || "", desconto: md.desconto || "", frete: md.frete || "", novidades: md.novidades || "",
   };
 }
 

@@ -1,5 +1,5 @@
 (function () {
-  const { ESTOQUE_URL, WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
+  const { PROMOCAO, ESTOQUE_URL, WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
   const app = document.getElementById("app");
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -156,6 +156,7 @@
           ${slides.map(([src, label]) => IMG(src, `${m.name} — ${label}`, src === m.fotos.modelo ? "foto-modelo" : "", 'loading="lazy" draggable="false"')).join("")}
         </a>
         <span class="card-code">${m.code}</span>
+        ${promoAtiva() ? `<span class="card-promo">${esc(PROMOCAO.nome)}</span>` : ""}
         <span class="card-esgotado">Esgotado</span>
         <button class="card-fav ${fav ? "on" : ""}" aria-pressed="${fav}" aria-label="Favoritar ${esc(m.name)}">${icon("heart")}</button>
         <button class="card-arrow prev" aria-label="Foto anterior">${icon("left")}</button>
@@ -170,7 +171,7 @@
       <a href="/produtos/${m.slug}" class="card-info">
         <p class="eyebrow">${esc(m.collection)}</p>
         <p class="card-name">${esc(m.name)}</p>
-        <p class="card-price">${m.preco}</p>
+        <p class="card-price">${promoAtiva() ? `<s>${m.preco}</s> <span class="preco-promo">a partir de ${brl(precoPromo(m))}</span>` : m.preco}</p>
       </a>
     </article>`;
   };
@@ -406,7 +407,8 @@
           <p class="eyebrow">${m.code} — Coleção ${esc(m.collection)}</p>
           <h1>${esc(m.name)}</h1>
           <p class="p-tag">${esc(m.tagline)}</p>
-          <p class="p-price">${m.preco}</p>
+          <p class="p-price">${promoAtiva() ? `<s>${m.preco}</s> <span class="preco-promo">a partir de ${brl(precoPromo(m))}</span>` : m.preco}</p>
+          ${promoAtiva() ? `<p class="p-promo"><span class="promo-tag">${esc(PROMOCAO.nome)}</span> ${PROMOCAO.faixas.map((f) => `${f.min} un. <strong>−${f.pct}%</strong>`).join(" · ")}</p>` : ""}
           <p class="p-desc">${esc(m.descricao)}</p>
           <div class="mt-8">
             <p class="eyebrow mb-3">Tamanho <span id="size-label" style="color:var(--foreground)"></span></p>
@@ -472,6 +474,14 @@
 
   /* ---------- Pedido: valores, cupom e mensagem ---------- */
   const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
+  /* ---------- Promoção por quantidade (Black Friday) ---------- */
+  const PROMO_INI = PROMOCAO ? Date.parse(PROMOCAO.inicio) : 0, PROMO_FIM = PROMOCAO ? Date.parse(PROMOCAO.fim) : 0;
+  const promoEstado = (agora = Date.now()) => (!PROMOCAO ? "off" : agora < PROMO_INI ? "antes" : agora < PROMO_FIM ? "ativa" : "off");
+  const promoAtiva = () => promoEstado() === "ativa";
+  const pctPromo = (qtd) => { if (!promoAtiva()) return 0; let p = 0; for (const f of PROMOCAO.faixas) if (qtd >= f.min) p = f.pct; return p; };
+  const pctMin = () => (PROMOCAO ? PROMOCAO.faixas[0].pct : 0);
+  const precoPromo = (m) => Math.round(m.precoNum * (100 - pctMin())) / 100;
+
   const CUPOM_KEY = "aliance-cupom";
   const getCupomCode = () => { try { return localStorage.getItem(CUPOM_KEY) || ""; } catch { return ""; } };
   const setCupomCode = (c) => { try { c ? localStorage.setItem(CUPOM_KEY, c) : localStorage.removeItem(CUPOM_KEY); } catch {} };
@@ -490,27 +500,52 @@
   function resumo() {
     const linhas = linhasSacola();
     const subtotal = Math.round(linhas.reduce((a, l) => a + l.m.precoNum * l.qty, 0) * 100) / 100;
-    let desconto = 0, frete = linhas.length ? FRETE : 0, cupom = null, cupomErro = "";
+    let descCupom = 0, frete = linhas.length ? FRETE : 0, cupom = null, cupomErro = "", cupomIgnorado = null;
     const code = getCupomCode();
     if (code && linhas.length) {
       const r = checarCupom(code, subtotal);
       if (r.ok) {
         cupom = r.cupom;
-        if (cupom.tipo === "percentual") desconto = Math.round(subtotal * cupom.valor) / 100;
-        else if (cupom.tipo === "valor") desconto = Math.min(subtotal, cupom.valor);
+        if (cupom.tipo === "percentual") descCupom = Math.round(subtotal * cupom.valor) / 100;
+        else if (cupom.tipo === "valor") descCupom = Math.min(subtotal, cupom.valor);
         else if (cupom.tipo === "frete") frete = 0;
       } else cupomErro = r.erro;
     }
+    // Promoção: não acumula com cupom, vale o maior desconto
+    const qtd = linhas.reduce((a, l) => a + l.qty, 0);
+    const pct = pctPromo(qtd);
+    let descPromo = pct ? Math.round(subtotal * pct) / 100 : 0, promoIgnorada = false;
+    if (pct && cupom) {
+      const economiaCupom = cupom.tipo === "frete" ? FRETE : descCupom;
+      if (descPromo >= economiaCupom) { cupomIgnorado = cupom; cupom = null; descCupom = 0; frete = FRETE; }
+      else { descPromo = 0; promoIgnorada = true; }
+    }
+    const desconto = Math.round((descCupom + descPromo) * 100) / 100;
     const total = Math.round((subtotal - desconto + frete) * 100) / 100;
-    return { linhas, subtotal, desconto, frete, total, cupom, cupomErro };
+    const promo = descPromo ? { pct, qtd, valor: descPromo } : null;
+    return { linhas, subtotal, desconto, descCupom, frete, total, cupom, cupomErro, cupomIgnorado, promoIgnorada, promo, qtd };
   }
   const resumoHTML = (r) => `
     <dl class="totais">
       <div><dt>Peças</dt><dd>${brl(r.subtotal)}</dd></div>
-      ${r.cupom ? `<div class="desc"><dt>Cupom ${esc(r.cupom.codigo.toUpperCase())}</dt><dd>${r.cupom.tipo === "frete" ? "Frete grátis" : "− " + brl(r.desconto)}</dd></div>` : ""}
+      ${r.promo ? `<div class="desc"><dt>${esc(PROMOCAO.nome)} · ${r.promo.qtd} un. · ${r.promo.pct}% OFF</dt><dd>− ${brl(r.promo.valor)}</dd></div>` : ""}
+      ${r.cupom ? `<div class="desc"><dt>Cupom ${esc(r.cupom.codigo.toUpperCase())}</dt><dd>${r.cupom.tipo === "frete" ? "Frete grátis" : "− " + brl(r.descCupom)}</dd></div>` : ""}
       <div><dt>Frete</dt><dd>${r.frete ? brl(r.frete) : "Grátis"}</dd></div>
       <div class="total"><dt>Total</dt><dd>${brl(r.total)}</dd></div>
-    </dl>`;
+    </dl>
+    ${r.cupomIgnorado ? `<p class="hint">O cupom ${esc(r.cupomIgnorado.codigo.toUpperCase())} não acumula com a ${esc(PROMOCAO.nome)}: aplicamos o maior desconto.</p>` : ""}
+    ${r.promoIgnorada ? `<p class="hint">Cupom e ${esc(PROMOCAO.nome)} não acumulam: o seu cupom dá mais desconto, então usamos ele.</p>` : ""}`;
+
+  function promoProgresso(qtd) {
+    if (!promoAtiva()) return "";
+    const fx = PROMOCAO.faixas, atual = pctPromo(qtd), prox = fx.find((f) => f.min > qtd);
+    const largura = Math.min(100, (qtd / fx[fx.length - 1].min) * 100);
+    const texto = prox
+      ? `${atual ? `<strong>${atual}% OFF</strong> aplicado · ` : ""}Adicione mais ${prox.min - qtd} ${prox.min - qtd > 1 ? "camisetas" : "camiseta"} e ganhe <strong>${prox.pct}% OFF</strong>`
+      : `<strong>${atual}% OFF</strong> aplicado na sua sacola`;
+    return `<div class="promo-prog"><p><span class="promo-tag">${esc(PROMOCAO.nome)}</span> ${texto}</p>
+      <div class="promo-barra"><span style="width:${largura}%"></span>${fx.map((f) => `<i style="left:${(f.min / fx[fx.length - 1].min) * 100}%"><b>${f.pct}%</b></i>`).join("")}</div></div>`;
+  }
 
   function Sacola() {
     const r = resumo();
@@ -519,7 +554,7 @@
     if (!r.linhas.length) {
       body = `<div class="empty"><p>Sua sacola está vazia.</p><a href="/produtos" class="btn-outline">Ver o acervo</a></div>`;
     } else {
-      body = `<ul class="bag-list">${r.linhas.map((l) => `
+      body = `${r.promoIgnorada ? "" : promoProgresso(r.qtd)}<ul class="bag-list">${r.linhas.map((l) => `
           <li>
             ${IMG(l.m.img, l.m.name)}
             <div style="min-width:0">
@@ -763,7 +798,8 @@
         `*NOVO PEDIDO — ALIANCE®*`, `Pedido: ${id}`, ``,
         `*Peças*`, itens, ``,
         `Subtotal: ${brl(r2.subtotal)}`,
-        r2.cupom ? `Cupom: ${r2.cupom.codigo.toUpperCase()} (${r2.cupom.tipo === "frete" ? "frete grátis" : "− " + brl(r2.desconto)})` : null,
+        r2.promo ? `${PROMOCAO.nome} (${r2.promo.qtd} un., ${r2.promo.pct}%): − ${brl(r2.promo.valor)}` : null,
+        r2.cupom ? `Cupom: ${r2.cupom.codigo.toUpperCase()} (${r2.cupom.tipo === "frete" ? "frete grátis" : "− " + brl(r2.descCupom)})` : null,
         `Frete: ${r2.frete ? brl(r2.frete) : "Grátis"}`,
         `*Total: ${brl(r2.total)}*`,
         `Pagamento: ${data.pagamento}`, ``,
@@ -982,6 +1018,37 @@
 
   /* ---------- Roteador (endereços normais, sem #) ---------- */
   const TITLES = { "/": "ALIANCE® — Camisetas autorais em tiragem limitada", "/colecoes": "Coleções — ALIANCE®", "/produtos": "Produtos — ALIANCE®", "/sacola": "Sacola — ALIANCE®", "/favoritos": "Favoritos — ALIANCE®", "/finalizar": "Finalizar pedido — ALIANCE®", "/pedido-enviado": "Pedido enviado — ALIANCE®", "/pagamento-retorno": "Pagamento — ALIANCE®", "/pedidos": "Pedidos — ALIANCE®", "/sobre": "Sobre a Marca — ALIANCE®", "/contato": "Contato — ALIANCE®" };
+  /* ---------- Faixa da promoção no topo, com contador ---------- */
+  const bfBar = document.getElementById("bf-bar");
+  let bfUltimoEstado = promoEstado();
+  function tickPromo() {
+    if (!bfBar) return;
+    const agora = Date.now(), est = promoEstado(agora);
+    if (est !== bfUltimoEstado) { bfUltimoEstado = est; router(); return; }
+    document.body.classList.toggle("tem-promo", est !== "off");
+    if (est === "off") return;
+    const alvo = est === "antes" ? PROMO_INI : PROMO_FIM;
+    let seg = Math.max(0, Math.floor((alvo - agora) / 1000));
+    const d = Math.floor(seg / 86400); seg %= 86400;
+    const h = Math.floor(seg / 3600); seg %= 3600;
+    const mi = Math.floor(seg / 60), s2 = seg % 60, z = (n) => String(n).padStart(2, "0");
+    const tempo = `${d ? d + "d " : ""}${z(h)}h ${z(mi)}m ${z(s2)}s`;
+    bfBar.querySelector(".bf-msg").innerHTML = est === "antes"
+      ? `<strong>${esc(PROMOCAO.nome.toUpperCase())} ALIANCE</strong><span class="bf-sep">·</span>Começa em <span class="bf-tempo">${tempo}</span>`
+      : `<strong>${esc(PROMOCAO.nome.toUpperCase())}</strong><span class="bf-sep">·</span><span class="bf-esconde-cel">Leve mais, pague menos: </span>${PROMOCAO.faixas.map((f) => f.pct + "%").join(", ").replace(/, ([^,]*)$/, " e $1")} OFF<span class="bf-sep">·</span>termina em <span class="bf-tempo">${tempo}</span>`;
+  }
+  if (bfBar && PROMOCAO) {
+    bfBar.querySelector(".bf-tabela").innerHTML = `<p class="bf-tit">Descontos ${esc(PROMOCAO.nome)}</p>
+      <table>${PROMOCAO.faixas.map((f) => `<tr><td>${f.min} ${f.min > 1 ? "camisetas" : "camiseta"}</td><td>${f.pct}% OFF</td></tr>`).join("")}</table>
+      <p class="bf-obs">Desconto nas camisetas, somando todas da sacola (estampas e tamanhos diferentes valem). Frete à parte. Não acumula com cupons.</p>`;
+    bfBar.querySelector(".bf-btn").addEventListener("click", () => {
+      const aberto = bfBar.classList.toggle("aberto");
+      bfBar.querySelector(".bf-btn").setAttribute("aria-expanded", String(aberto));
+    });
+    tickPromo();
+    setInterval(tickPromo, 1000);
+  }
+
   function router() {
     clearInterval(heroTimer);
     // Aceita links antigos com # (ex.: /#/produtos/monte-carlo)
@@ -1013,6 +1080,7 @@
     window.scrollTo(0, 0);
     updateHeader();
     aplicarEstoque();
+    if (bfBar) { bfBar.classList.remove("aberto"); tickPromo(); }
   }
   window.addEventListener("popstate", router);
   document.addEventListener("click", (e) => {
