@@ -9,6 +9,16 @@ window.ALIANCE = (function () {
   // PROVISÓRIO: número do Heitor até a loja informar o número próprio.
   const WHATSAPP_PEDIDOS = "5517988351459";
   const FRETE = 24.90; // valor fixo por pedido
+  // Frete grátis para entregas em São José do Rio Preto (pelo CEP ou pela cidade + UF)
+  const FRETE_GRATIS_LOCAL = { nome: "São José do Rio Preto", uf: "SP", cepInicio: 15000000, cepFim: 15099999, cidadeTermina: "RIO PRETO" };
+  function freteGratisLocal(end) {
+    if (!end) return false;
+    const L = FRETE_GRATIS_LOCAL;
+    const cep = Number(String(end.cep || "").replace(/\D/g, ""));
+    if (String(end.cep || "").replace(/\D/g, "").length === 8 && cep >= L.cepInicio && cep <= L.cepFim) return true;
+    const cidade = String(end.cidade || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z ]/g, " ").replace(/\s+/g, " ").trim();
+    return String(end.uf || "").toUpperCase() === L.uf && cidade.endsWith(L.cidadeTermina);
+  }
 
   // ---------- Promoção por quantidade (Black Friday) ----------
   // Desconto nas camisetas (não no frete), pelo TOTAL de camisetas da sacola.
@@ -125,5 +135,5 @@ window.ALIANCE = (function () {
     return `https://api.whatsapp.com/send?phone=${phone}${text ? `&text=${encodeURIComponent(text)}` : ""}`;
   }
 
-  return { PROMOCAO, WHATSAPP_PEDIDOS, FRETE, CUPONS, ESTOQUE_URL, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
+  return { FRETE_GRATIS_LOCAL, freteGratisLocal, PROMOCAO, WHATSAPP_PEDIDOS, FRETE, CUPONS, ESTOQUE_URL, OWNERS, INSTAGRAM, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink };
 })();

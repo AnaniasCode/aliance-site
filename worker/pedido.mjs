@@ -1,6 +1,16 @@
 // Cálculo do pedido no servidor (Cloudflare Worker). Usa os dados de catalog.js (gerados em
 // worker/dados.mjs pelo build.mjs), então preço, frete e cupom não podem ser alterados pelo navegador.
-import { modelos, FRETE, CUPONS, PROMOCAO } from "./dados.mjs";
+import { modelos, FRETE, CUPONS, PROMOCAO, FRETE_GRATIS_LOCAL } from "./dados.mjs";
+
+// Frete grátis para São José do Rio Preto (mesma regra do catalog.js)
+export function freteGratisLocal(end) {
+  if (!end || !FRETE_GRATIS_LOCAL) return false;
+  const L = FRETE_GRATIS_LOCAL;
+  const digitos = String(end.cep || "").replace(/\D/g, "");
+  if (digitos.length === 8 && Number(digitos) >= L.cepInicio && Number(digitos) <= L.cepFim) return true;
+  const cidade = String(end.cidade || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z ]/g, " ").replace(/\s+/g, " ").trim();
+  return String(end.uf || "").toUpperCase() === L.uf && cidade.endsWith(L.cidadeTermina);
+}
 
 const r2 = (v) => Math.round(v * 100) / 100;
 export const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
@@ -29,7 +39,7 @@ export function pctPromocao(qtd, agora = Date.now()) {
   return pct;
 }
 
-export function calcularPedido(itens, codigoCupom, agora = Date.now()) {
+export function calcularPedido(itens, codigoCupom, agora = Date.now(), endereco = null) {
   if (!Array.isArray(itens) || !itens.length) throw new Error("Sacola vazia.");
   if (itens.length > 30) throw new Error("Itens demais no pedido.");
   const linhas = itens.map((i) => {
@@ -44,7 +54,9 @@ export function calcularPedido(itens, codigoCupom, agora = Date.now()) {
   const chk = checarCupom(codigoCupom, subtotal);
   if (!chk.ok) throw new Error(chk.erro);
   const cupom = chk.cupom;
-  let descCupom = 0, frete = FRETE;
+  const local = freteGratisLocal(endereco);
+  const freteBase = local ? 0 : FRETE;
+  let descCupom = 0, frete = freteBase;
   if (cupom?.tipo === "percentual") descCupom = r2(subtotal * cupom.valor / 100);
   else if (cupom?.tipo === "valor") descCupom = Math.min(subtotal, cupom.valor);
   else if (cupom?.tipo === "frete") frete = 0;
@@ -54,14 +66,14 @@ export function calcularPedido(itens, codigoCupom, agora = Date.now()) {
   let descPromo = pct ? r2(subtotal * pct / 100) : 0;
   let cupomUsado = cupom;
   if (pct && cupom) {
-    const economiaCupom = cupom.tipo === "frete" ? FRETE : descCupom;
-    if (descPromo >= economiaCupom) { cupomUsado = null; descCupom = 0; frete = FRETE; }
+    const economiaCupom = cupom.tipo === "frete" ? freteBase : descCupom;
+    if (descPromo >= economiaCupom) { cupomUsado = null; descCupom = 0; frete = freteBase; }
     else descPromo = 0;
   }
   const desconto = r2(descCupom + descPromo);
   const total = r2(subtotal - desconto + frete);
   const promocao = descPromo ? `${PROMOCAO.nome} (${qtd} un., ${pct}%)` : "";
-  return { linhas, subtotal, desconto, frete, total, cupom: cupomUsado ? cupomUsado.codigo.toUpperCase() : "", promocao };
+  return { linhas, subtotal, desconto, frete, total, cupom: cupomUsado ? cupomUsado.codigo.toUpperCase() : "", promocao, freteLocal: local };
 }
 
 export function novoId() {

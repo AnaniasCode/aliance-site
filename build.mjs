@@ -20,7 +20,7 @@ const { modelos } = ctx.window.ALIANCE;
   const A = ctx.window.ALIANCE;
   const dados = {
     modelos: A.modelos.map((m) => ({ code: m.code, name: m.name, precoNum: m.precoNum, tamanhos: [...m.tamanhos] })),
-    FRETE: A.FRETE, CUPONS: A.CUPONS, PROMOCAO: A.PROMOCAO,
+    FRETE: A.FRETE, CUPONS: A.CUPONS, PROMOCAO: A.PROMOCAO, FRETE_GRATIS_LOCAL: A.FRETE_GRATIS_LOCAL,
   };
   fs.writeFileSync(path.join(ROOT, "worker", "dados.mjs"), "// Gerado pelo build.mjs a partir de catalog.js — não edite à mão.\n" +
     Object.entries(dados).map(([k, v]) => `export const ${k} = ${JSON.stringify(v, null, 2)};`).join("\n") + "\n");

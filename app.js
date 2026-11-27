@@ -1,5 +1,5 @@
 (function () {
-  const { PROMOCAO, ESTOQUE_URL, WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
+  const { FRETE_GRATIS_LOCAL, freteGratisLocal, PROMOCAO, ESTOQUE_URL, WHATSAPP_PEDIDOS, FRETE, CUPONS, OWNERS, SUPPORT_EMAIL, modelos, colecoes, medidas, heroSlides, whatsLink } = window.ALIANCE;
   const app = document.getElementById("app");
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -497,10 +497,13 @@
   function linhasSacola() {
     return bag.map((i) => ({ ...i, m: modelos.find((m) => m.code === i.code) })).filter((l) => l.m);
   }
-  function resumo() {
+  // endereco (opcional): { cep, cidade, uf } — frete grátis para São José do Rio Preto
+  function resumo(endereco) {
     const linhas = linhasSacola();
     const subtotal = Math.round(linhas.reduce((a, l) => a + l.m.precoNum * l.qty, 0) * 100) / 100;
-    let descCupom = 0, frete = linhas.length ? FRETE : 0, cupom = null, cupomErro = "", cupomIgnorado = null;
+    const freteLocal = !!(endereco && freteGratisLocal(endereco));
+    const freteBase = linhas.length && !freteLocal ? FRETE : 0;
+    let descCupom = 0, frete = freteBase, cupom = null, cupomErro = "", cupomIgnorado = null;
     const code = getCupomCode();
     if (code && linhas.length) {
       const r = checarCupom(code, subtotal);
@@ -516,21 +519,22 @@
     const pct = pctPromo(qtd);
     let descPromo = pct ? Math.round(subtotal * pct) / 100 : 0, promoIgnorada = false;
     if (pct && cupom) {
-      const economiaCupom = cupom.tipo === "frete" ? FRETE : descCupom;
-      if (descPromo >= economiaCupom) { cupomIgnorado = cupom; cupom = null; descCupom = 0; frete = FRETE; }
+      const economiaCupom = cupom.tipo === "frete" ? freteBase : descCupom;
+      if (descPromo >= economiaCupom) { cupomIgnorado = cupom; cupom = null; descCupom = 0; frete = freteBase; }
       else { descPromo = 0; promoIgnorada = true; }
     }
     const desconto = Math.round((descCupom + descPromo) * 100) / 100;
     const total = Math.round((subtotal - desconto + frete) * 100) / 100;
     const promo = descPromo ? { pct, qtd, valor: descPromo } : null;
-    return { linhas, subtotal, desconto, descCupom, frete, total, cupom, cupomErro, cupomIgnorado, promoIgnorada, promo, qtd };
+    return { linhas, subtotal, desconto, descCupom, frete, freteLocal, comEndereco: !!endereco, total, cupom, cupomErro, cupomIgnorado, promoIgnorada, promo, qtd };
   }
   const resumoHTML = (r) => `
     <dl class="totais">
       <div><dt>Peças</dt><dd>${brl(r.subtotal)}</dd></div>
       ${r.promo ? `<div class="desc"><dt>${esc(PROMOCAO.nome)} · ${r.promo.qtd} un. · ${r.promo.pct}% OFF</dt><dd>− ${brl(r.promo.valor)}</dd></div>` : ""}
       ${r.cupom ? `<div class="desc"><dt>Cupom ${esc(r.cupom.codigo.toUpperCase())}</dt><dd>${r.cupom.tipo === "frete" ? "Frete grátis" : "− " + brl(r.descCupom)}</dd></div>` : ""}
-      <div><dt>Frete</dt><dd>${r.frete ? brl(r.frete) : "Grátis"}</dd></div>
+      <div><dt>Frete${r.freteLocal ? ` <span class="frete-local">${esc(FRETE_GRATIS_LOCAL.nome)}</span>` : ""}</dt><dd>${r.frete ? brl(r.frete) : "Grátis"}</dd></div>
+      ${!r.comEndereco && r.frete ? `<p class="frete-aviso">Frete grátis para ${esc(FRETE_GRATIS_LOCAL.nome)}: o valor é recalculado quando você informar o endereço.</p>` : ""}
       <div class="total"><dt>Total</dt><dd>${brl(r.total)}</dd></div>
     </dl>
     ${r.cupomIgnorado ? `<p class="hint">O cupom ${esc(r.cupomIgnorado.codigo.toUpperCase())} não acumula com a ${esc(PROMOCAO.nome)}: aplicamos o maior desconto.</p>` : ""}
@@ -634,7 +638,9 @@
   const PAGAMENTOS = ["Pix", "Cartão de débito", "Cartão de crédito"];
 
   function Finalizar() {
-    const r = resumo();
+    let salvoEnd = {};
+    try { salvoEnd = JSON.parse(localStorage.getItem(CLIENTE_KEY) || "{}"); } catch {}
+    const r = resumo({ cep: salvoEnd.cep || "", cidade: salvoEnd.cidade || "", uf: salvoEnd.uf || "" });
     if (!r.linhas.length) {
       app.innerHTML = `<div class="container page" style="max-width:56rem">${pageTitle("Finalizar pedido", "Sua sacola está vazia")}
         <div class="empty"><p>Escolha suas peças antes de finalizar.</p><a href="/produtos" class="btn-outline">Ver o acervo</a></div></div>`;
@@ -695,13 +701,16 @@
         <aside class="checkout-summary">
           <p class="eyebrow">Resumo</p>
           <ul class="mini-list">${r.linhas.map((l) => `<li>${IMG(l.m.img, l.m.name)}<div><p>${esc(l.m.name)}</p><span>Tamanho ${l.size} · ${l.qty}x</span></div><strong>${brl(l.m.precoNum * l.qty)}</strong></li>`).join("")}</ul>
-          ${resumoHTML(r)}
+          <div id="ck-totais">${resumoHTML(r)}</div>
           <a href="/sacola" class="small-btn">Alterar sacola ou cupom</a>
         </aside>
       </div>
     </div>`;
 
     const f = document.getElementById("checkout");
+    const enderecoDoForm = () => ({ cep: f.elements.cep.value, cidade: f.elements.cidade.value, uf: f.elements.uf.value });
+    const atualizarTotais = () => { const el = document.getElementById("ck-totais"); if (el) el.innerHTML = resumoHTML(resumo(enderecoDoForm())); };
+    ["input", "change"].forEach((ev) => f.addEventListener(ev, (e) => { if (["cep", "cidade", "uf"].includes(e.target.name)) atualizarTotais(); }));
     // Pagamento online (Mercado Pago): só liga se a chave estiver configurada no Cloudflare
     pagamentoOnline().then((pg) => {
       if (!pg.ativo || !document.body.contains(f)) return;
@@ -728,6 +737,7 @@
         if (j.bairro) f.elements.bairro.value = j.bairro;
         if (j.localidade) f.elements.cidade.value = j.localidade;
         if (j.uf) f.elements.uf.value = j.uf;
+        atualizarTotais();
         ["rua", "bairro", "cidade", "uf"].forEach((k) => { if (f.elements[k].value) limparErro({ target: f.elements[k] }); });
         msg.textContent = "";
         (j.logradouro ? f.elements.numero : f.elements.rua).focus();
@@ -786,7 +796,7 @@
         }
         return;
       }
-      const r2 = resumo();
+      const r2 = resumo({ cep: data.cep, cidade: data.cidade, uf: data.uf });
       const d = new Date();
       const id = `AL${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
       const endereco = `${data.rua.trim()}, ${data.numero.trim()}${data.complemento.trim() ? " — " + data.complemento.trim() : ""}\n${data.bairro.trim()} — ${data.cidade.trim()}/${data.uf}\nCEP ${maskCep(data.cep)}`;
@@ -800,7 +810,7 @@
         `Subtotal: ${brl(r2.subtotal)}`,
         r2.promo ? `${PROMOCAO.nome} (${r2.promo.qtd} un., ${r2.promo.pct}%): − ${brl(r2.promo.valor)}` : null,
         r2.cupom ? `Cupom: ${r2.cupom.codigo.toUpperCase()} (${r2.cupom.tipo === "frete" ? "frete grátis" : "− " + brl(r2.descCupom)})` : null,
-        `Frete: ${r2.frete ? brl(r2.frete) : "Grátis"}`,
+        `Frete: ${r2.frete ? brl(r2.frete) : r2.freteLocal ? `Grátis (${FRETE_GRATIS_LOCAL.nome})` : "Grátis"}`,
         `*Total: ${brl(r2.total)}*`,
         `Pagamento: ${data.pagamento}`, ``,
         `*Cliente*`, `Nome: ${data.nome.trim()}`, `Telefone: ${maskPhone(data.telefone)}`,

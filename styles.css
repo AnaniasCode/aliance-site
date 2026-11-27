@@ -452,3 +452,7 @@ body.modo-painel .bf-bar { display: none !important; }
 .promo-barra span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 999px; transition: width .4s; }
 .promo-barra i { position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 999px; background: var(--card); border: 2px solid var(--accent); }
 .promo-barra i b { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-size: .65rem; font-weight: 400; font-style: normal; color: var(--fg-70); }
+
+/* ---------- Frete grátis local ---------- */
+.frete-local { margin-left: .35rem; padding: .05rem .4rem; border: 1px solid oklch(0.7 0.13 150 / 60%); color: oklch(0.78 0.13 150); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle; }
+.frete-aviso { margin: -.2rem 0 .4rem; font-size: .75rem; color: var(--muted-foreground); }

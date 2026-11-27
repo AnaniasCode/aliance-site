@@ -88,7 +88,7 @@ async function criarPagamento(req, env) {
   if (erro) return json({ erro }, 400);
   if (!EXCLUIR[body.pagamento]) return json({ erro: "Forma de pagamento inválida." }, 400);
   let calc;
-  try { calc = calcularPedido(body.itens, body.cupom); } catch (e) { return json({ erro: e.message }, 400); }
+  try { calc = calcularPedido(body.itens, body.cupom, Date.now(), cli); } catch (e) { return json({ erro: e.message }, 400); }
   const id = novoId();
   const pref = montarPreferencia({ id, calc, cli, pagamento: body.pagamento, origin: new URL(req.url).origin });
   let res, j;

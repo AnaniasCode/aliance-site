@@ -16,6 +16,8 @@ o pedido abre pronto no WhatsApp da loja.
 Em `catalog.js`:
 - `WHATSAPP_PEDIDOS`: número que recebe os pedidos (55 + DDD + número).
 - `FRETE`: valor fixo do frete por pedido.
+- `FRETE_GRATIS_LOCAL`: frete grátis para São José do Rio Preto (faixa de CEP 15000-000 a 15099-999,
+  ou cidade terminando em "Rio Preto" com UF SP). Vale no site e no servidor do pagamento.
 - `CUPONS`: lista de cupons (modelo explicado no próprio arquivo). Tipos: `percentual`,
   `valor` ou `frete` (frete grátis), com mínimo, validade e ativo/pausado.
 
