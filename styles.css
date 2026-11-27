@@ -405,3 +405,14 @@ input::placeholder { color: oklch(0.94 0.02 80 / 35%); }
 .qty button:disabled { opacity: .3; cursor: not-allowed; }
 .stock-warn { margin-top: .4rem; font-size: .78rem; color: oklch(0.72 0.17 25); }
 .form-erro a { text-decoration: underline; }
+
+/* ---------- Página dos donos (/pedidos): cabeçalho só com o título ---------- */
+.painel-titulo { display: none; }
+body.modo-painel .header-inner > a.logo,
+body.modo-painel .nav-desktop,
+body.modo-painel .header-icons,
+body.modo-painel .nav-mobile { display: none !important; }
+body.modo-painel .header-inner { justify-content: center; }
+body.modo-painel .painel-titulo { display: block; text-align: center; white-space: nowrap; }
+.painel-sep { color: var(--accent); margin: 0 .35em; }
+@media (max-width: 480px) { body.modo-painel .painel-titulo { font-size: 1.35rem; } }

@@ -989,6 +989,7 @@
     const path = location.pathname.replace(/\/index\.html$/, "/").replace(/(.)\/$/, "$1") || "/";
     const query = new URLSearchParams(location.search);
     currentPath = path;
+    document.body.classList.toggle("modo-painel", path === "/pedidos");
     document.title = TITLES[path] || "ALIANCE®";
     setMenu(false);
     navD.querySelectorAll("a").forEach((a) => {
