@@ -24,7 +24,7 @@ window.ALIANCE = (function () {
   // ---------- Estoque (Google Sheets) ----------
   // URL do "App da Web" do script em ferramentas/estoque-apps-script.gs.
   // Vazio = estoque desligado (o site não limita nada).
-  const ESTOQUE_URL = "https://script.google.com/macros/s/AKfycbzo3YdYVA47oh7jXdK45N1_jVlfMi6b3cb529EUFOQXipQrkmecOsrA9uo_ts6jbx1pvw/exec";
+  const ESTOQUE_URL = "https://script.google.com/macros/s/AKfycbz28P_hIV7Vh0W344-E-AH8Y-KT4w-A7pW5b8xIyVYuPirkFXpHntYKdbvYCLGVl419ag/exec";
   // Cor da camisa lisa de cada peça, como está escrita na planilha (coluna COR).
   // Camisas pretas usam PRETA; todas as claras usam BRANCA (OFF-WHITE da planilha não é usado).
   const corEstoque = (cor) => (/^pret/i.test(cor) ? "PRETA" : "BRANCA");
