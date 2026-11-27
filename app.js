@@ -1018,23 +1018,32 @@
     if (currentPath !== "/pedidos") return;
     if (r && r.status === 401) { try { sessionStorage.removeItem(SENHA_KEY); } catch {} return pedirSenha("Senha incorreta."); }
     if (!r || !r.ok) { app.innerHTML = `<div class="container page">${pageTitle("Área da loja", "Pedidos")}<p class="form-erro">${esc(j.erro || "Erro ao carregar.")}</p></div>`; return; }
+    // O mesmo pedido pode ter várias tentativas no Mercado Pago (ex.: o cliente gerou o Pix duas vezes).
+    // Mostra um cartão por pedido, com a tentativa mais avançada (paga > em análise > aguardando > outras).
+    const ordem = { approved: 0, authorized: 1, in_process: 1, pending: 2 };
+    const grupos = new Map();
+    for (const p of j.pedidos) { const k = p.pedido || "#" + p.id; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); }
+    const pedidos = [...grupos.values()].map((ps) => {
+      const melhor = [...ps].sort((a, b) => (ordem[a.status] ?? 9) - (ordem[b.status] ?? 9) || String(b.data).localeCompare(String(a.data)))[0];
+      return { ...melhor, tentativas: ps.length };
+    }).sort((a, b) => String(b.data).localeCompare(String(a.data)));
     let filtro = "pagos";
     const render = () => {
-      const lista = j.pedidos.filter((p) => filtro === "todos" || p.status === "approved");
+      const lista = pedidos.filter((p) => filtro === "todos" || p.status === "approved");
       const quando = (d) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
       const zap = (t) => { const d = String(t).replace(/\D/g, ""); return d.length >= 10 ? `https://api.whatsapp.com/send?phone=55${d}` : ""; };
       app.innerHTML = `<div class="container page">
         ${pageTitle("Área da loja", "Pedidos", "Pagamentos feitos pelo site nos últimos 90 dias, lidos direto do Mercado Pago.")}
         <div class="chips">
-          <button class="chip ${filtro === "pagos" ? "on" : ""}" data-f="pagos">Pagos (${j.pedidos.filter((p) => p.status === "approved").length})</button>
-          <button class="chip ${filtro === "todos" ? "on" : ""}" data-f="todos">Todos (${j.pedidos.length})</button>
+          <button class="chip ${filtro === "pagos" ? "on" : ""}" data-f="pagos">Pagos (${pedidos.filter((p) => p.status === "approved").length})</button>
+          <button class="chip ${filtro === "todos" ? "on" : ""}" data-f="todos">Todos (${pedidos.length})</button>
           <button class="chip" id="painel-atualizar">Atualizar</button>
           <button class="chip" id="painel-sair">Sair</button>
         </div>
         ${lista.length ? `<div class="pedidos">${lista.map((p) => `
           <article class="pedido">
             <header><strong>${esc(p.pedido || "#" + p.id)}</strong><span class="sit sit-${esc(p.status)}">${esc(p.situacao)}</span></header>
-            <p class="ped-meta">${quando(p.data)} · ${esc(p.valor)} · ${esc(p.forma)}</p>
+            <p class="ped-meta">${quando(p.data)} · ${esc(p.valor)} · ${esc(p.forma)}${p.tentativas > 1 ? ` · ${p.tentativas} tentativas de pagamento (é um pedido só)` : ""}</p>
             <p><b>${esc(p.nome || "—")}</b>${p.telefone ? ` · ${zap(p.telefone) ? `<a href="${zap(p.telefone)}" target="_blank" rel="noopener">${esc(p.telefone)}</a>` : esc(p.telefone)}` : ""}</p>
             ${p.cpf || p.email ? `<p class="ped-meta">${[p.cpf && "CPF " + esc(p.cpf), p.email && `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`].filter(Boolean).join(" · ")}</p>` : ""}
             ${p.itens ? `<p>${esc(p.itens).replace(/; /g, "<br>")}</p>` : ""}
